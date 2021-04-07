@@ -1,0 +1,6 @@
+model Vant
+model_config_file config/vant/vant_config.txt
+solver pso
+solver_config_file config/vant/pso_config_vant.txt
+sim_type simulation
+simulation_config_file config/vant/simulation_config_vant.txt

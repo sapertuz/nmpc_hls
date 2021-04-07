@@ -1,0 +1,6 @@
+model InvertedPendulum
+model_config_file config/inverted_pendulum/inverted_pendulum_config.txt
+solver pso
+solver_config_file config/inverted_pendulum/pso_config.txt
+sim_type simulation
+simulation_config_file config/inverted_pendulum/simulation_config.txt

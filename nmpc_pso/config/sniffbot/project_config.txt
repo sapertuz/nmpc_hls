@@ -1,0 +1,6 @@
+model Sniffbot
+model_config_file config/sniffbot/sniffbot_config.txt
+solver pso
+solver_config_file config/sniffbot/pso_config.txt
+sim_type simulation
+simulation_config_file config/sniffbot/simulation_config_ring.txt

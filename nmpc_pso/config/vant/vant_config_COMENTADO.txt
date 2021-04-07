@@ -1,0 +1,34 @@
+# Parametros NMPC
+N 50
+Nu 50
+Nx 12
+n_U 4
+# Tempo de Amostragem
+Ts 0.05
+# Restrições na ação de controle
+u_max 400 400 400 400
+u_min 50 50 50 50
+du_max 20 20 20 20
+# Referência de controle em Steady State
+uss 192.7669
+# Restrições nos estados
+state_upper_limits 1e10 1e10 1e10 1e10 1e10 1e10 1e10 1e10 1e10 1e10 1e10 1e10
+state_lower_limits -1e10 -1e10 -1e10 -1e10 -1e10 -1e10 -1e10 -1e10 -1e10 -1e10 -1e10 -1e10 
+# Pesos da Função Custo Q
+#Q = pesos dos erros dos estados (diferença dos valores atuais e a referência)
+#Qf = pesos do erro especificamente no final do horizonte
+#R = pesos dos erros do sinal de controla (no caso do VANT a diferença entre o USS e o U gerado pela função
+Q 1 0 1 0 1 0  10 0 10 0 10 0
+Qf 10 0 10 0 10 0 10 0 10 0 10 0
+R 0 0 0 0
+# Estado inicial
+current_state 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+# Variáveis da Parametrização
+Parametrization 4
+Lambda 5
+q_param 2
+pmax 1 1 1 1
+pmin -1 -1 -1 -1
+# Parâmetros da Suavização da Curva de Referência
+Rising_Time 1
+tr 10 0 10 0 10 0 0 0 0 0 8 0
