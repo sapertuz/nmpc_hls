@@ -10,9 +10,9 @@ template <
         _hw_real state[_Nx],
         _hw_real control[_n_U]
     ){
-#pragma HLS interface ap_fifo  port=state_dot
-#pragma HLS interface ap_fifo  port=state
-#pragma HLS interface ap_fifo  port=control
+// #pragma HLS interface ap_fifo  port=state_dot
+// #pragma HLS interface ap_fifo  port=state
+// #pragma HLS interface ap_fifo  port=control
 
 #pragma HLS ALLOCATION instances=hmul limit=2 operation
 #pragma HLS ALLOCATION instances=hdiv limit=1 operation
@@ -41,7 +41,7 @@ template <
     std::cout                   << std::fixed << std::setprecision(2) << std::right << std::setw(6) << x1 << "\t";
     std::cout                   << std::fixed << std::setprecision(2) << std::right << std::setw(6) << th << "\t";
     std::cout                   << std::fixed << std::setprecision(2) << std::right << std::setw(6) << th1 << std::endl;
-    // std::cout << "states: " << x0 << " " << x1 << " " << th << " " << th1 << std::endl;
+    std::cout << "states: " << x0 << " " << x1 << " " << th << " " << th1 << std::endl;
 #endif
         _hw_real c = cos(th);
         _hw_real s = sin(th);

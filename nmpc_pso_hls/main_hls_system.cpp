@@ -27,19 +27,19 @@ const float _pmin[] = {-1.0};
 const unsigned char _controlled_state[] = {1, 1, 1, 1};
 const float _state_upper_limits[] = {0.5, 1e10, 1e10, 1e10} ;
 const float _state_lower_limits[] = {-0.5, -1e10, -1e10, -1e10} ;
-const float _Q[] = {1e4, 1.0, 1e4, 1.0};
-const float _Qf[] = {1e3, 1e3, 1e3, 1e3};
-const float _R[] = {1.0};
+const float _Q[] = {1e3, 0.0, 1e-1, 0.0};
+const float _Qf[] = {1e4, 0.0, 1e-0, 0.0};
+const float _R[] = {1e-4};
 
 #define _Rising_Time 0
 const float _tr[] =  {0, 0, 0, 0};
 
 float initial_state[] = {0.0, 0.0, 3.1415926536, 0.0};
 // float x_ss[] = {0.4, 0.3, 0.2, 0.1};
-float u_guess[] = {50, 50};
+float u_guess[] = {39, 50};
 float x_ref[] = {  
-    0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 3.1415926536, 0.0,
+    0.0, 0.0, 2.0, 0.0,
+    0.0, 0.0, 3.0, 0.0,
     0.0, 0.0, 3.1415926536, 0.0
 };
 float u_ref[] = {0, 0};

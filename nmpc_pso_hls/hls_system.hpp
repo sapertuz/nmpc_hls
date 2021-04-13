@@ -1,9 +1,10 @@
 #ifndef SYSTEM_HPP
 #define SYSTEM_HPP
 
-#define DEBUG_SYSTEM
+// #define DEBUG_SYSTEM
 
 #include "hls_inverted_pendulum.hpp"
+#include "aux_functions.hpp"
 
 template <
     typename _hw_real,
@@ -35,7 +36,7 @@ protected:
 
     _hw_real uss[_n_U]; // Control Signal at Steady State
 
-    _hw_real controlled_state[_Nx];
+    unsigned char controlled_state[_Nx];
     _hw_real state_upper_limits[_Nx];
     _hw_real state_lower_limits[_Nx];
     // Weight Matrices
@@ -51,9 +52,9 @@ protected:
     int state_type[_Nx];
 
     // Acceleration Control
-    _hw_real ddu_max[_n_U];
-    _hw_real acc_max[_n_U];
-    _hw_real acc_min[_n_U];
+    // _hw_real ddu_max[_n_U];
+    // _hw_real acc_max[_n_U];
+    // _hw_real acc_min[_n_U];
 
 public:
     System(
@@ -75,23 +76,21 @@ public:
         Ts_2 = Ts*(_hw_real)0.5; //Ts/6;
         Ts_6 = Ts*(_hw_real)0.1666666667; //Ts/6;
         // uss = _uss;
-        memcpy(uss,                 (_hw_real *)_uss, _n_U*sizeof(_hw_real));
-        memcpy(u_max,               (_hw_real *)_u_max, _n_U*sizeof(_hw_real));
-        memcpy(u_min,               (_hw_real *)_u_min, _n_U*sizeof(_hw_real));
-        memcpy(du_max,              (_hw_real *)_du_max, _n_U*sizeof(_hw_real));
-        memcpy(controlled_state,  (_hw_real *)_controlled_state, _Nx*sizeof(_hw_real));
-        memcpy(state_upper_limits,  (_hw_real *)_state_upper_limits, _Nx*sizeof(_hw_real));
-        memcpy(state_lower_limits,  (_hw_real *)_state_lower_limits, _Nx*sizeof(_hw_real));
-        memcpy(Q,                   (_hw_real *)_Q, _Nx*sizeof(_hw_real));
-        memcpy(Qf,                  (_hw_real *)_Qf, _Nx*sizeof(_hw_real));
-        // memcpy(last_state,          (_hw_real *)_last_state, _Nx*sizeof(_hw_real));
-        // memcpy(current_state,       (_hw_real *)_current_state, _Nx*sizeof(_hw_real));
-        memcpy(R,                   (_hw_real *)_R, _n_U*sizeof(_hw_real));
-        for (unsigned i = 0; i < _n_U; i++){
-            ddu_max[i] = du_max[i];
-            acc_max[i] = ddu_max[i];
-            acc_min[i] = -ddu_max[i];
-	    }
+        memcpy_loop<_hw_real, _n_U>(uss,                 (const _hw_real *)_uss);
+        memcpy_loop<_hw_real, _n_U>(u_max,               (const _hw_real *)_u_max);
+        memcpy_loop<_hw_real, _n_U>(u_min,               (const _hw_real *)_u_min);
+        memcpy_loop<_hw_real, _n_U>(du_max,              (const _hw_real *)_du_max);
+        memcpy_loop<unsigned char, _Nx>(controlled_state,  (const unsigned char *)_controlled_state);
+        memcpy_loop<_hw_real, _Nx>(state_upper_limits,  (const _hw_real *)_state_upper_limits);
+        memcpy_loop<_hw_real, _Nx>(state_lower_limits,  (const _hw_real *)_state_lower_limits);
+        memcpy_loop<_hw_real, _Nx>(Q,                   (const _hw_real *)_Q);
+        memcpy_loop<_hw_real, _Nx>(Qf,                  (const _hw_real *)_Qf);
+        memcpy_loop<_hw_real, _n_U>(R,                  (const _hw_real *)_R);
+        // for (unsigned i = 0; i < _n_U; i++){
+        //     ddu_max[i] = du_max[i];
+        //     acc_max[i] = ddu_max[i];
+        //     acc_min[i] = -ddu_max[i];
+	    // }
     };
 // ---------------------------------------------------
 	_hw_real nmpc_cost_function(
@@ -100,12 +99,11 @@ public:
         _hw_real control_guess[_n_U*_Nu],
         _hw_real xref[_Nx*_N]
     ){
+#pragma HLS ARRAY_RESHAPE variable=uu block factor=_N dim=1
+#pragma HLS ARRAY_RESHAPE variable=xref block factor=_N dim=1
+
 #pragma HLS interface ap_fifo port=control_guess
 #pragma HLS interface ap_fifo port=xref
-
-#pragma HLS interface ap_fifo port=uref
-#pragma HLS interface ap_fifo port=xss
-#pragma HLS interface ap_fifo port=uss
 
 #pragma HLS ALLOCATION instances=hmul limit=1 operation
 #pragma HLS ALLOCATION instances=hadd limit=1 operation
@@ -113,38 +111,42 @@ public:
 
 #pragma HLS ALLOCATION instances=one_step_prediction limit=1 function
         // Register inputs locally
-        _hw_real local_xref[_Nx*_N];
-        memcpy(local_xref, (_hw_real *)xref, _Nx*_N*sizeof(_hw_real));
+        // _hw_real local_xref[_Nx*_N];
+        // memcpy_loop<_hw_real,>(local_xref, (const _hw_real *)xref, _Nx*_N*sizeof(_hw_real));
 
         // Constructing the vector of guessed control actions with respect to N and Nu
         _hw_real uu[_n_U*_N];
         _hw_real last_control_guess[_n_U];
         unsigned k_cg = 0;
-        const unsigned k_cg_last = _n_U*_Nu - _n_U;
-        for (unsigned i = 0; i < _n_U*_Nu; ++i) {
-            _hw_real control_guess_val = control_guess[i];
-            uu[i] = control_guess_val;
-            if (i == k_cg_last){
-                last_control_guess[k_cg] = control_guess_val;
-                k_cg = (k_cg<_n_U) ? k_cg+1 : 0;
-            }
-        }
-#if _Nu < _N
         unsigned k_u = 0;
-        for (unsigned i = _n_U*_Nu; i < _n_U*_N; ++i) {    
-            uu[i] = last_control_guess[k_u];
-            k_u = (k_u<_n_U) ? k_u+1 : 0;
+        const unsigned k_cg_last = _n_U*_Nu - _n_U;
+        for (unsigned i = 0; i < _n_U*_N; ++i) {
+            _hw_real control_val;
+            if(i < _n_U*_Nu){
+                control_val = control_guess[i];
+                if (i == k_cg_last){
+                    last_control_guess[k_cg] = control_val;
+                    k_cg++;
+                }
+            }else{
+                control_val = last_control_guess[k_u];
+                k_u = (k_u<_n_U) ? k_u+1 : 0;
+            }
+            uu[i] = control_val;
         }
-#endif
 
         // Initialize x_hat vector
         _hw_real x_hat[_Nx*_N]; //[Nx*N];
-        for (unsigned i = 0; i < _Nx; ++i) {
-            x_hat[i] = current_state[i];
-        }
-        for (unsigned i = _Nx; i < (_Nx*_N); ++i) {
-            x_hat[i] = (_hw_real)0.0;
-        }
+#pragma HLS ARRAY_RESHAPE variable=x_hat block factor=_N dim=1
+        // _hw_real x_value;
+        // for (unsigned i = 0; i < _Nx*_N; ++i) {
+        //     if (i < _Nx){
+        //         x_value = current_state[i];
+        //     }else{
+        //         x_value = (_hw_real)0.0;
+        //     }
+        //     x_hat[i] = x_value;
+        // }
 
         // Calculate State error
         _hw_real J = 0.0;
@@ -159,28 +161,44 @@ public:
         unsigned k = 0;
         unsigned l = 0;
         _hw_real x_buffer[_Nx];
+        _hw_real prev_x_hat[_Nx]; //[Nx*N];
+        memcpy_loop<_hw_real,_Nx>(prev_x_hat, (const _hw_real *)current_state);
+        // memcpy_loop<_hw_real,>(&x_hat[0], prev_x_hat, _Nx*sizeof(_hw_real));
 
-#pragma HLS ARRAY_RESHAPE variable=x_hat block factor=2 dim=1
-
-        one_step_error_loop: for (unsigned i = 0; i < _N-1; ++i) {
-#ifdef DEBUG_SYSTEM
-    std::cout << "Horizon[" << i << "]"<< std::endl;
-#endif
-            k = _Nx*(i+1);
-#pragma HLS dataflow
-            memcpy(current_x_hat, (_hw_real *)&x_hat[_Nx*i], _Nx*sizeof(_hw_real));
-            memcpy(current_uu, (_hw_real *)&uu[_n_U*i], _n_U*sizeof(_hw_real));
+        // one_step_error_loop: for (unsigned i = 0; i < _N-1; ++i) {
+        one_step_error_loop: for (unsigned i = 0; i < _N; ++i) {
+            // k = _Nx*(i+1);
+            k = _Nx*(i);
+// #pragma HLS dataflow    
+// #pragma HLS dependence variable=current_x_hat array intra RAW true 
+// #pragma HLS dependence variable=current_uu array intra RAW true 
+// #pragma HLS dependence variable=prev_x_hat array intra WAR true 
+// #pragma HLS dependence variable=current_xref array intra RAW true 
+// #pragma HLS dependence variable=Ji array intra WAR true 
+// #pragma HLS dependence variable=Ji_buff array intra RAW true  
+// #pragma HLS dependence variable=Jui array intra WAR true 
+// #pragma HLS dependence variable=Jui_buff array intra RAW true        
+            // memcpy_loop<_hw_real,>(current_x_hat, (const _hw_real *)&x_hat[_Nx*i], _Nx*sizeof(_hw_real));
+            memcpy_loop<_hw_real, _Nx>(current_x_hat, (const _hw_real *)prev_x_hat);
+            memcpy_loop<_hw_real, _n_U>(current_uu, (const _hw_real *)&uu[_n_U*i]);
             
             one_step_prediction(x_buffer, current_x_hat, current_uu);
             
-            memcpy(&x_hat[k], (_hw_real *)x_buffer, _Nx*sizeof(_hw_real));
-            memcpy(current_xref, (_hw_real *)&local_xref[_Nx*i], _Nx*sizeof(_hw_real));
+            memcpy_loop<_hw_real, _Nx>(&x_hat[k], (const _hw_real *)x_buffer);
+            memcpy_loop<_hw_real, _Nx>(prev_x_hat, (const _hw_real *)x_buffer);
+            memcpy_loop<_hw_real, _Nx>(current_xref, (const _hw_real *)&xref[_Nx*i]);
             
             one_step_error(Ji_buff, Ji, x_buffer, current_xref);
             one_step_u_error(Jui_buff, Jui, current_uu, uss);
 
-            memcpy(Ji, (_hw_real *)Ji_buff, _Nx*sizeof(_hw_real));
-            memcpy(Jui, (_hw_real *)Jui_buff, _n_U*sizeof(_hw_real));
+            memcpy_loop<_hw_real, _Nx>(Ji, (const _hw_real *)Ji_buff);
+            memcpy_loop<_hw_real, _n_U>(Jui, (const _hw_real *)Jui_buff);
+#ifdef DEBUG_SYSTEM
+    std::cout << "Horizon[" << i << "]"<< std::endl;
+    std::cout << "\t State"; print_formatted_float_array(prev_x_hat, _Nx, 2, 6); 
+    std::cout << "\t Control"; print_formatted_float_array(current_uu, _n_U, 2, 6); std::cout << std::endl;
+    std::cout << "\t Set  "; print_formatted_float_array(current_xref, _Nx, 2, 6); std::cout << std::endl;
+#endif
         }
         for (unsigned j = 0; j < _Nx; j++) {
             J = J + Q[j]*(Ji[j]);
@@ -196,7 +214,7 @@ public:
         for (unsigned j = 0; j < _Nx; ++j) {
             _hw_real single_x_hat = x_buffer[j];
             _hw_real tmp_err = (single_x_hat - current_xref[j]);
-            _hw_real penality = ((state_lower_limits[j] < single_x_hat) && (single_x_hat < state_upper_limits[j])) ? (_hw_real)1.0 : (_hw_real)1e10;
+            _hw_real penality = ((state_lower_limits[j] <= single_x_hat) && (single_x_hat <= state_upper_limits[j])) ? (_hw_real)1.0 : (_hw_real)1e10;
             Jf[j] = penality*tmp_err*tmp_err;
         }
         for (unsigned j = 0; j < _Nx; j++) {
@@ -237,7 +255,7 @@ protected:
             //_hw_real tmp_err = normalize_angle(x_hat[l] - xref[l]);
             _hw_real current_x_hat = x_hat[j];
             _hw_real tmp_err = (controlled_state[j] == 1) ? (current_x_hat - xref[j]) : (_hw_real)0.0;
-            penality = ((state_lower_limits[j] < current_x_hat) && (current_x_hat < state_upper_limits[j])) ? (_hw_real)1.0 : (_hw_real)1e10;
+            penality = ((state_lower_limits[j] <= current_x_hat) && (current_x_hat <= state_upper_limits[j])) ? (_hw_real)1.0 : (_hw_real)1e10;
             Ji_out[j] = Ji_in[j] + penality*tmp_err*tmp_err;
         }
     }
@@ -255,7 +273,7 @@ protected:
             //_hw_real tmp_err = normalize_angle(x_hat[l] - xref[l]);
             _hw_real current_uu = uu[j];
             _hw_real tmp_err = (current_uu - uref[j]);
-            penality = ((u_min[j] < current_uu) && (current_uu < u_max[j])) ? (_hw_real)1.0 : (_hw_real)1e10;
+            penality = ((u_min[j] <= current_uu) && (current_uu <= u_max[j])) ? (_hw_real)1.0 : (_hw_real)1e10;
             Ji_out[j] = Ji_in[j] + penality*tmp_err*tmp_err;
         }
     }
@@ -265,9 +283,9 @@ protected:
         _hw_real state[_Nx],
         _hw_real control[_n_U]
     ){
-#pragma HLS interface ap_fifo  port=state_plus
-#pragma HLS interface ap_fifo  port=state
-#pragma HLS interface ap_fifo  port=control
+// #pragma HLS interface ap_fifo  port=state_plus
+// #pragma HLS interface ap_fifo  port=state
+// #pragma HLS interface ap_fifo  port=control
 
 #pragma HLS ALLOCATION instances=hmul limit=1 operation
 #pragma HLS ALLOCATION instances=hadd limit=1 operation
@@ -277,8 +295,8 @@ protected:
 
         _hw_real local_control[_n_U];
         _hw_real local_state[_Nx];
-        memcpy(local_control, (_hw_real *)control, _n_U*sizeof(_hw_real));
-        memcpy(local_state, (_hw_real *)state, _Nx*sizeof(_hw_real));
+        memcpy_loop<_hw_real, _n_U>(local_control, (const _hw_real *)control);
+        memcpy_loop<_hw_real, _Nx>(local_state, (const _hw_real *)state);
 
         _hw_real k1[_Nx], k2[_Nx], k3[_Nx], k4[_Nx];
         _hw_real state_temp1[_Nx];
