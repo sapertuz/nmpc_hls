@@ -1,11 +1,20 @@
 #ifndef HLS_INVERTED_PENDULUM_HPP
 #define HLS_INVERTED_PENDULUM_HPP
 
+#ifdef __SYNTHESIS__
+#include "hls_math.h"
+using namespace hls;
+#endif
+
 template <
     typename _hw_real, 
     unsigned _Nx,
     unsigned _n_U
->void model_inverted_pendulum(
+>class model_inverted_pendulum{
+public:
+    model_inverted_pendulum(){}
+
+    void model(
         _hw_real state_dot[_Nx],
         _hw_real state[_Nx],
         _hw_real control[_n_U]
@@ -37,11 +46,11 @@ template <
         _hw_real th1 = state[3];
         
 #ifdef DEBUG_SYSTEM
-    std::cout << "\t states: "  << std::fixed << std::setprecision(2) << std::right << std::setw(6) << x0 << "\t";
-    std::cout                   << std::fixed << std::setprecision(2) << std::right << std::setw(6) << x1 << "\t";
-    std::cout                   << std::fixed << std::setprecision(2) << std::right << std::setw(6) << th << "\t";
-    std::cout                   << std::fixed << std::setprecision(2) << std::right << std::setw(6) << th1 << std::endl;
-    std::cout << "states: " << x0 << " " << x1 << " " << th << " " << th1 << std::endl;
+    // std::cout << "\t states: "  << std::fixed << std::setprecision(2) << std::right << std::setw(6) << x0 << "\t";
+    // std::cout                   << std::fixed << std::setprecision(2) << std::right << std::setw(6) << x1 << "\t";
+    // std::cout                   << std::fixed << std::setprecision(2) << std::right << std::setw(6) << th << "\t";
+    // std::cout                   << std::fixed << std::setprecision(2) << std::right << std::setw(6) << th1 << std::endl;
+    // std::cout << "states: " << x0 << " " << x1 << " " << th << " " << th1 << std::endl;
 #endif
         _hw_real c = cos(th);
         _hw_real s = sin(th);
@@ -76,5 +85,5 @@ template <
         state_dot[3] = state_dot_3;// theta dot dot
         
     }
-
+};
 #endif
