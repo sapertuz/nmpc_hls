@@ -23,10 +23,10 @@ public:
 // #pragma HLS interface ap_fifo  port=state
 // #pragma HLS interface ap_fifo  port=control
 
-#pragma HLS ALLOCATION instances=hmul limit=2 operation
-#pragma HLS ALLOCATION instances=hdiv limit=1 operation
-#pragma HLS ALLOCATION instances=hadd limit=1 operation
-#pragma HLS ALLOCATION instances=hsub limit=1 operation
+#pragma HLS allocation instances=hmul limit=2
+#pragma HLS allocation instances=hdiv limit=1
+#pragma HLS allocation instances=hadd limit=1
+#pragma HLS allocation instances=hsub limit=1
 
         // Inverted Pendulum from:
         // Mercieca, J., & Fabri, S. G. (2011). 

@@ -52,15 +52,17 @@ float x_ref[] = {
     0.0, 0.0, 3.1415926536, 0.0
 };
 
+
 float cost_function_wrapper(
     const float control_guess[_n_U*_Nu],
 	const float xref[_Nx*_N],
 	const float current_state[_Nx]
 )
 {
-#pragma HLS interface ap_fifo port=control_guess
-#pragma HLS interface ap_fifo port=xref
-#pragma HLS interface ap_fifo port=current_state
+//#pragma HLS INLINE
+//#pragma HLS interface mode=ap_fifo depth=_n_U*_Nu port=control_guess
+//#pragma HLS interface mode=ap_fifo depth=_Nx*_N port=xref
+//#pragma HLS interface mode=ap_fifo depth=_Nx*_N port=current_state
 
     typedef model_inverted_pendulum<_real, _Nx, _n_U> model_t;
     model_t current_model;

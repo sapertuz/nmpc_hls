@@ -111,7 +111,7 @@ public:
 // #pragma HLS ALLOCATION instances=hadd limit=1 operation
 // #pragma HLS ALLOCATION instances=hsub limit=1 operation
 
-#pragma HLS ALLOCATION instances=one_step_prediction limit=1 function
+#pragma HLS ALLOCATION function instances=one_step_prediction limit=1
 
         // Register inputs locally
         // _hw_real local_xref[_Nx*_N];
@@ -207,7 +207,7 @@ public:
 // #pragma HLS array_partition variable=uu block factor=_N
 #pragma HLS array_partition variable=xref block factor=_N
 #pragma HLS array_partition variable=control_guess block factor=_Nu
-#pragma HLS dataflow
+//#pragma HLS dataflow
 
 //#pragma HLS dependence variable=prev_x_hat inter RAW distance=1 true
 //#pragma HLS dependence variable=current_uu inter RAW distance=1 true
@@ -347,11 +347,11 @@ protected:
 
 //#pragma HLS inline
 
-#pragma HLS ALLOCATION instances=hmul limit=1 operation
-#pragma HLS ALLOCATION instances=hadd limit=1 operation
-#pragma HLS ALLOCATION instances=hsub limit=1 operation
+#pragma HLS ALLOCATION operation instances=hmul limit=1
+#pragma HLS ALLOCATION operation instances=hadd limit=1
+#pragma HLS ALLOCATION operation instances=hsub limit=1
 
-#pragma HLS ALLOCATION instances=model_inverted_pendulum limit=1 function
+#pragma HLS ALLOCATION function instances=model limit=1
 
         _hw_real local_control[_n_U];
         _hw_real local_state[_Nx];
