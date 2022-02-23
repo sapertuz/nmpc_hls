@@ -7,26 +7,24 @@ using namespace hls;
 #endif
 
 template <
-    typename _hw_real, 
-    unsigned _Nx,
-    unsigned _n_U
+    typename _hw_real
 >class model_inverted_pendulum{
 public:
     model_inverted_pendulum(){}
 
     void model(
-        _hw_real state_dot[_Nx],
-        _hw_real state[_Nx],
-        _hw_real control[_n_U]
+        _hw_real *state_dot,
+        _hw_real *state,
+        _hw_real *control
     ){
 // #pragma HLS interface ap_fifo  port=state_dot
 // #pragma HLS interface ap_fifo  port=state
 // #pragma HLS interface ap_fifo  port=control
 
-#pragma HLS allocation instances=hmul limit=2
-#pragma HLS allocation instances=hdiv limit=1
-#pragma HLS allocation instances=hadd limit=1
-#pragma HLS allocation instances=hsub limit=1
+#pragma HLS allocation operation instances=hmul limit=2
+#pragma HLS allocation operation instances=hdiv limit=1
+#pragma HLS allocation operation instances=hadd limit=1
+#pragma HLS allocation operation instances=hsub limit=1
 
         // Inverted Pendulum from:
         // Mercieca, J., & Fabri, S. G. (2011). 

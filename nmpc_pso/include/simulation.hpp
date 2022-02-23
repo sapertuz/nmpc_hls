@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <string>
+#include <iomanip>
 #include "config.h"
 #include "pso.hpp"
 #include "system.hpp"
