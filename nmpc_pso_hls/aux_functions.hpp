@@ -18,10 +18,11 @@ template<typename array_type_dest, typename array_type_src, unsigned n> void mem
 }
 
 template<typename array_type_dest, typename array_type_src, unsigned n> void memcpy_loop_rolled
-    (array_type_dest dest[n], const array_type_src src[n]){
+    (array_type_dest dest[n], volatile array_type_src src[n]){
 #pragma HLS inline
     // Copy contents of src[] to dest[]
     for (unsigned short i=0; i<n; i++){
+#pragma HLS pipeline off
         dest[i] = src[i];
     }
 }
@@ -35,27 +36,42 @@ template<typename array_type_dest, typename array_type_src, unsigned n> void mem
     }
 }
 
-template<typename array_type_dest, typename array_type_src, unsigned n> void memcpy_loop_feedback
-    (array_type_dest dest[n], array_type_src src[n]){
-    // Copy contents of src[] to dest[]
+template<typename array_type_dest, typename array_type_src, unsigned n> void split 
+    (volatile array_type_src *in, array_type_dest *out1, array_type_dest *out2) {
 #pragma HLS inline
-    for (unsigned short i=0; i<n; i++){
-        array_type_dest a = src[i]; 
-        dest[i] = a;
-        array_type_src b = a;
-        src[i] = b;
+        split:for(int i=0; i<n; i++) {
+#pragma HLS pipeline off
+            array_type_dest a = in[i];
+            out1[i] = a;
+            out2[i] = a;
+        }
     }
-}
+    
+template<typename array_type_dest, typename array_type_src, unsigned n> void split_4 
+    (array_type_src in[n], 
+    array_type_dest out1[n], array_type_dest out2[n], array_type_dest out3[n], array_type_dest out4[n]) {
+#pragma HLS inline
+        split:for(int i=0; i<n; i++) {
+            array_type_dest a = in[i];
+            out1[i] = a;
+            out2[i] = a;
+            out3[i] = a;
+            out4[i] = a;
+        }
+    }
 
-template<typename array_type_dest, typename array_type_src, unsigned n> void memcpy_loop_rolled_2dest
-    (array_type_dest dest_1[n], array_type_dest dest_2[n], const array_type_src src[n]){
-    // Copy contents of src[] to dest[]
+template<typename array_type_dest, typename array_type_src, unsigned n> void split_5 
+    (array_type_src in[n], 
+    array_type_dest out1[n], array_type_dest out2[n], array_type_dest out3[n], array_type_dest out4[n], array_type_dest out5[n]) {
 #pragma HLS inline
-    for (unsigned short i=0; i<n; i++){
-        array_type_dest a = src[i]; 
-        dest_1[i] = a;
-        dest_2[i] = a;
+        split:for(int i=0; i<n; i++) {
+            array_type_dest a = in[i];
+            out1[i] = a;
+            out2[i] = a;
+            out3[i] = a;
+            out4[i] = a;
+            out5[i] = a;
+        }
     }
-}
 
 #endif
