@@ -18,10 +18,17 @@ calc_state = 1;
 % [time, xHistory, uHistory, xRef_out] = QuadrotorNMPC();
      
 %% Or load previously generated data
-load data_line.mat
+% load data_line.mat
 % load data_spiral.mat
 % load data_ring.mat
 % load data_ring_noInputWeights.mat
+
+%% Or load from c data
+run ../nmpc_pso_xhls/matlab/nmpc_sim.m
+Ts = 0.1;
+uHistory = NMPC_SIM.control_history;
+xHistory = NMPC_SIM.state_history;
+xRef_out = NMPC_SIM.xref;
 
 %% Drone model constants and data definition
 global drone

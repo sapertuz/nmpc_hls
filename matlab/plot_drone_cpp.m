@@ -5,7 +5,7 @@ clc
 path_sim_data = '../nmpc_pso_hls/matlab/';
 
 %% Or load previously generated data
-run([path_sim_data,'nmpc_sim.m']);
+run nmpc_sim.m
 
 Ts = Model.Ts;
 time = 0:Ts:Model.SimulationTime;

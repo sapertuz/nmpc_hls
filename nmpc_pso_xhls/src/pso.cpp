@@ -122,11 +122,11 @@ void PSO::initializeParticlesWithDuConstrains(
     _real u_curr[], 
     _real uss[]) 
 {
-	for (int j = 0; j < Nu; ++j) {
-		for (int k = 0; k < Nc; ++k) {
-			int idx = k*Nu+j;
-			for (int i = 0; i < S; ++i) {
-		        if (j==0) {
+    for (int i = 0; i < S; ++i) {
+        for (int j = 0; j < Nu; ++j) {
+            int idx = j*Nc;
+		    for (int k = 0; k < Nc; ++k) {
+	    	    if (j==0) {
 		            //x[i][idx] = (u_curr[k] - du_max[k]) + (2*du_max[k]) * random->read(); //rand_real();
                     x[i][idx] = (u_curr[k] + controled_system->acc_min[k]) + (controled_system->acc_max[k]-controled_system->acc_min[k]) * rand_real(); //random->read(); 
 		        }
@@ -144,6 +144,7 @@ void PSO::initializeParticlesWithDuConstrains(
                 y[i][idx] = uss[k];
 		        v[i][idx] = ini_v;
                 valid_particle[i] = 1;
+                idx++;
 		    }
 		}
 	}

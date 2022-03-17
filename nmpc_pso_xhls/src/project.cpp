@@ -39,7 +39,7 @@ void Project::run(){
 
     sim->execute();
 #ifndef DEBUG
-        sim->save();
+    sim->save();
 #endif
 
     _real mse = sim->compute_mse(50.0);

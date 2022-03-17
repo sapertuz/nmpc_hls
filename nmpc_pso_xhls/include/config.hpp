@@ -13,7 +13,7 @@ typedef float _real; //typedef double _real;
 #endif
 
 // Model configuration variables
-#define INVERTED_PENDULUM_CONFIG
+//#define INVERTED_PENDULUM_CONFIG
 //#define SNIFFBOT_CONFIG
 
 #ifdef INVERTED_PENDULUM_CONFIG

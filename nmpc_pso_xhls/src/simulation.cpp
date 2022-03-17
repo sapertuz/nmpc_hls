@@ -45,7 +45,7 @@ Simulation::Simulation(System * model, std::string config_file) {
 	qtd_pontos = (int)((_real) SimulationTime / _Ts);
 	initial_state = (_real *) malloc(Nx*sizeof(_real));
 	read_real_vector(&sim_config, "initial_state", initial_state, _Nx);
-    
+
     u_ref_input = (_real *) malloc(Nc*sizeof(_real));
     read_real_vector(&sim_config, "u_ref", u_ref_input, _n_U);
 
