@@ -8,6 +8,8 @@
 #include "hls_pseudorand.hpp"
 #include "aux_functions.hpp"
 
+#define H_MAX 60000.0f
+
 // #if _Parametrization > 0
 //     #define _Nn     _Parametrization
 //     #define _Nuu    _N
@@ -20,6 +22,8 @@
 
 template<
     class _hw_real,
+	unsigned _n_S,
+	unsigned _maxiter,
     unsigned _Nh,
     unsigned _Nx,
     unsigned _n_U,
@@ -27,10 +31,7 @@ template<
 >class PSO{
 protected:
 	// Pseudo random generator variables
-	const int a = (1103515245);
-	const int c = (12345);
-	const int m = (1<<31);
-	short rnd_seed = 9727;
+	
 
 	const int S; 	// number of particles
 	//System * controled_system;
@@ -53,27 +54,26 @@ protected:
 	_hw_real threshold;
 	int stop_criteria;
 
-	const _hw_real x_min[_n_U];
-	const _hw_real x_max[_n_U];
+	const _hw_real u_min[_n_U];
+	const _hw_real u_max[_n_U];
 	const _hw_real du_max[_n_U];
-	
 	_hw_real x_max_first[_n_U];
 	_hw_real x_min_first[_n_U];
 
 	const _hw_real init_v; // initial velocity
 
 	// Particles
-	// _hw_real x[_S][_Nu*_n_U];
-	// _hw_real y[_S][_Nu*_n_U];
-	// _hw_real v[_S][_Nu*_n_U];
-	int valid_particle[_S];
+	// _hw_real x[_n_S][_Nu*_n_U];
+	// _hw_real y[_n_S][_Nu*_n_U];
+	// _hw_real v[_n_S][_Nu*_n_U];
+	int valid_particle[_n_S];
 	int number_of_active_particles;
 
-	_hw_real f_ind[_S];
-	_hw_real fx[_S];
-	// _hw_real bestfitness[_maxiter];
-	// _hw_real global_min[_Nu*_n_U];
-	_hw_real previous_control[_Parametrization];
+	_hw_real f_ind[_n_S];
+	_hw_real fx[_n_S];
+	_hw_real bestfitness[_maxiter];
+	_hw_real global_min[_Nu*_n_U];
+	//_hw_real previous_control[_Parametrization];
 
 	// Controlled System Configuration
 	int N;
@@ -85,18 +85,25 @@ protected:
 	//ExportData * exporter;
 	
 	// System
-	typedef System<_hw_real,_Nh, _Nx, _n_U, _Nu> _system_t; 
-	_system_t current_system;
+	const unsigned short controlled_state[_Nx];
+	const _hw_real state_upper_limits[_Nx];
+	const _hw_real state_lower_limits[_Nx];
+	const _hw_real Q[_Nx];
+	const _hw_real Qf[_Nx];
+	const _hw_real R[_n_U];
+	const _hw_real uss[_n_U];
+	const _hw_real Ts;
+	
+	// typedef System<_hw_real,_Nh, _Nx, _n_U, _Nu> _system_t; 
+	// _system_t current_system;
 	typedef pseudoRand_gen<_hw_real> _randCore_t;
-	_randCore_t randGen;
+	_randCore_t randGen(seed, min, max);
 
 public:
 // Init Execute
 constexpr PSO(
 	// PSO Configuration
-	const int 	 	_S,
 	const int 	 	_stable_zero,
-	const int 	 	_maxiter,
 	const _hw_real  _max_v,
 	const _hw_real  _w0,
 	const _hw_real 	_wf,
@@ -104,13 +111,24 @@ constexpr PSO(
 	const _hw_real 	_c1,
 	const _hw_real 	_c2,
 	const _hw_real  _slope_init,
-	const _hw_real	_x_min[_n_U],
-	const _hw_real	_x_max[_n_U],
+	const _hw_real	_u_min[_n_U],
+	const _hw_real	_u_max[_n_U],
 	const _hw_real	_du_max[_n_U],
-	) : S(_S), maxiter(_maxiter), max_v(_max_v), w0(_w0), wf(_wf), 
+	const unsigned short _controlled_state[_Nx],
+	const _hw_real _state_upper_limits[_Nx],
+	const _hw_real _state_lower_limits[_Nx],
+	const _hw_real _Q[_Nx],
+	const _hw_real _Qf[_Nx],
+	const _hw_real _R[_n_U],
+	const _hw_real _uss[_n_U],
+	const _hw_real _Ts
+	) : max_v(_max_v), w0(_w0), wf(_wf), 
 		slope(_slope), c1(_c1), c2(_c2), slope_init((_wf-_w0)/_maxiter),
 		stable_zero(_stable_zero), init_v(_max_v*0.01),
-		x_min(_x_min), x_max(_x_max), du_max(_du_max)
+		u_min(_u_min), u_max(_u_max), du_max(_du_max),
+		Ts(_Ts), uss(_uss), controlled_state(_controlled_state), 
+        state_upper_limits(_state_upper_limits), state_lower_limits(_state_lower_limits),
+        Q(_Q), Qf(_Qf), R(_R)
 {
 }
 
@@ -123,7 +141,7 @@ int execute(
 	volatile _hw_real xref[_Nu*_Nx],
 	volatile _hw_real uref[_n_U], 
 	volatile _hw_real xss[_Nx],
-	volatile _hw_real uss[_n_U], 
+	//volatile _hw_real uss[_n_U], 
 	
 	_hw_real new_best[_Nu*_n_U],
 	_hw_real * J
@@ -140,18 +158,18 @@ int execute(
     //controled_system->setState(x_curr);
 
 	// Particles Variables
-	_hw_real x[_S][_Nu*_n_U];
+	_hw_real x[_n_S][_Nu*_n_U];
 #pragma HLS bind_storage variable=x type=RAM_T2P impl=BRAM
 #pragma HLS stream variable=x type=shared
-	_hw_real y[_S][_Nu*_n_U];
+	_hw_real y[_n_S][_Nu*_n_U];
 #pragma HLS bind_storage variable=y type=RAM_T2P impl=BRAM
 #pragma HLS stream variable=y type=shared
-	_hw_real v[_S][_Nu*_n_U];
+	_hw_real v[_n_S][_Nu*_n_U];
 #pragma HLS bind_storage variable=v type=RAM_T2P impl=BRAM
 #pragma HLS stream variable=v type=shared
-	_hw_real bestfitness[_maxiter];
-	_hw_real global_min[_Nu*_n_U];
-    number_of_active_particles = _S;
+	//_hw_real bestfitness[_maxiter];
+	//_hw_real global_min[_Nu*_n_U];
+    number_of_active_particles = _n_S;
     
 	int best_pos;
 
@@ -185,9 +203,12 @@ int execute(
 	// ITERATIVE PROCESS
 	int k = 0;  // index of iteration
 
-	while (k < maxiter) {
+	while (k < _maxiter) {
         evaluateFitnessAndDetectLocalBest(x, y, xref, uref, xss, uss_local);     
-        best_pos = detectGlobalMinimum(k);
+        // Global Minimum detection
+		best_pos = detectGlobalMinimum(k);
+		memcpy_loop_rolled<_real, _real, _Nu*_n_U>(global_min, y[best_pos]);
+
         updateParticlesWithDuConstrains(x, y, v);    
 
         //detectInvalidParticles(k, best_pos);
@@ -212,9 +233,9 @@ int execute(
         new_best[i] = global_min[i];
     }
     
-    *J = bestfitness[maxiter-1];
+    *J = bestfitness[_maxiter-1];
 
-	return maxiter;
+	return 0;
 }
 
 // Misc Functions
@@ -230,14 +251,14 @@ _hw_real rand_real(){
 
 // ---------------------------------------------------
 _hw_real min_array(
-	_hw_real array[_S], 
+	_hw_real array[_n_S], 
 	int * pos
 ){
 	//[bestfitness(k), p] = min(f_ind);
 #pragma HLS inline
 	_hw_real min = array[0];
 	int pos_temp = 0;
-	for (int i = 1; i < _S; ++i) {
+	for (int i = 1; i < _n_S; ++i) {
         if(array[i] < min) {
 			min = array[i];
 			pos_temp = i;
@@ -268,7 +289,7 @@ void initializeConstrains(
 void initializeBestLocalFitness(void){
 #pragma HLS inline
 	// Initialize best local fitness 
-	for (int i = 0; i < _S; ++i) { 
+	for (int i = 0; i < _n_S; ++i) { 
 		f_ind[i] = H_MAX;
 	}
 }
@@ -281,10 +302,10 @@ int detectGlobalMinimum(
 	// Global Minimum detection
     bestfitness[iter] = min_array(f_ind, &pos);
     
-	// Global minimum position
-    for (int i = 0; i < _Nu*_n_U; ++i) {
-        global_min[i] = _y[pos][i];
-    }
+	// // Global minimum position
+    // for (int i = 0; i < _Nu*_n_U; ++i) {
+    //     global_min[i] = _y[pos][i];
+    // }
     return pos;
 
 }
@@ -299,16 +320,29 @@ void equalizeParticles(
 #pragma HLS ALLOCATION instances=hadd limit=1 operation
 #pragma HLS ALLOCATION instances=hsub limit=1 operation
 */	
+	_real x_tmp;
 	if (iteration == 0){	
-	for (int i = 0; i < _S; ++i) {
-		for (int j = 0; j < _Nu; ++j) {
-			int idx = k*_n_U;
-			for (int k = 1; k < _n_U; ++k) {
-				_x[i][idx] = _x[i][j];
-				idx++;
+	// for (int i = 0; i < _n_S; ++i) {
+	// 	for (int j = 0; j < _Nu; ++j) {
+	// 		int idx = k*_n_U;
+	// 		for (int k = 1; k < _n_U; ++k) {
+	// 			_x[i][idx] = _x[i][j];
+	// 			idx++;
+    //         }
+    //     }
+    // }
+
+	for (int j = 0; j < Nu; ++j) {
+        for (int k = 1; k < Nc; ++k) {
+            int idx = k*Nu+j;
+            for (int i = 0; i < S; ++i) {
+#pragma UNROLL
+				x_tmp = _x[i][j];
+                _x[i][idx] = x_tmp;
             }
         }
     }
+
 	}
 
 }
@@ -334,10 +368,10 @@ void detectInvalidParticles(
 	int iter, 
 	int best_pos,
 	
-	_hw_real _x[_S][_Nu*_n_U]
+	_hw_real _x[_n_S][_Nu*_n_U]
 ){
-	for (int i = 0; i < _S; ++i) {
-        if(_S != best_pos) {
+	for (int i = 0; i < _n_S; ++i) {
+        if(_n_S != best_pos) {
             if((std::abs(fx[i]-bestfitness[iter])/bestfitness[iter]) < 0.0001){
 //                int count = 0;  
                 int count = _Nh*_n_U;
@@ -376,7 +410,7 @@ void initializeParticlesWithDuConstrains(
 	_hw_real x_ant[_n_U];
 	memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(x_ant, u_curr);
 
-	for (int i = 0; i < _S; ++i) {
+	for (int i = 0; i < _n_S; ++i) {
 		for (int j = 0; j < _Nu; ++j) {
 			int idx = j*_n_U;
 			for (int k = 0; k < _n_U; ++k) {
@@ -404,13 +438,13 @@ void initializeParticles(
 	_hw_real d_max = 0.2;
     _hw_real d2_max = 0.4;
     int k = 0;
-    for (int i = 0; i < _S; ++i) {
+    for (int i = 0; i < _n_S; ++i) {
         //for (int j = 0; j < Nu/2; ++j) {
     	k = 0;
         for (int j = 0; j < _Nu; ++j) {
 			_hw_real rand_tmp = rand_real();
             _hw_real x_tmp = (j == 0)? 
-				_u_min[k] + (u_max[k]-u_min[k]) * rand_tmp: //random->read();
+				u_min[k] + (u_max[k]-u_min[k]) * rand_tmp: //random->read();
 				_x[i][j] = _x[i][j-1] - d_max + (d2_max) * rand_tmp; //random->read();
 			_x[i][j] = x_tmp; 
 			_y[i][j] = H_MAX;
@@ -485,19 +519,18 @@ void initializeStableZero(
 }
 // ---------------------------------------------------
 void evaluateFitnessAndDetectLocalBest(
-	_hw_real _x[_S][_Nu*_n_U], 
-	_hw_real _y[_S][_Nu*_n_U],
+	_hw_real _x[_n_S][_Nu*_n_U], 
+	_hw_real _y[_n_S][_Nu*_n_U],
 
 	_hw_real xref[_Nx*_Nu], 
 	_hw_real uref[_n_U],
-	_hw_real xss[_Nx], 
-	_hw_real uss[_n_U]
+	_hw_real xss[_Nx]
 ){
 #pragma HLS interface ap_bus  port=_x
 #pragma HLS interface ap_bus  port=xref
 #pragma HLS interface ap_fifo port=uref
 #pragma HLS interface ap_fifo port=xss
-#pragma HLS interface ap_fifo port=uss
+
 	typedef System<_real, _Nh, _Nx, _n_U, _Nu> T_system;
     T_system current_system(
         u_max, 
@@ -513,13 +546,13 @@ void evaluateFitnessAndDetectLocalBest(
         Ts);
 
 	// Evaluates fitness and local detection
-    loop_1: for(int i = 0; i < _S; i++) {
+    loop_1: for(int i = 0; i < _n_S; i++) {
         // std::cout << std::endl;
 #pragma HLS unroll factor=4 region skip_exit_check
         if(valid_particle[i] == 1){
             // std::cout << x[i][0] << " " << x[i][1] << " " << x[i][2] << " " << x[i][3];
             // fx[i] = rand_real(); 
-			controled_system->nmpc_cost_function(&_x[i][0], xref, uref, xss, uss);
+			current_system.nmpc_cost_function(&_x[i][0], xref, uref, xss, uss);
             if (fx[i] < f_ind[i]) {
                 loop_2: for (int j = 0; j < _Nu*_n_U; ++j) {
                 	_y[i][j] = _x[i][j];
@@ -542,7 +575,7 @@ void updateParticles(
     _hw_real r1, r2;
     
     // Update Particles
-    for (int i = 0; i < _S; ++i) {
+    for (int i = 0; i < _n_S; ++i) {
         if(valid_particle[i] == 1){
             for (int j = 0; j < _Nu; ++j) {
                 r1 = rand_real();
@@ -558,11 +591,11 @@ void updateParticles(
                 }
                 _x[i][j] = _x[i][j] + _v[i][j];
 
-                if (_x[i][j] > x_max[j]) {
-                    _x[i][j] = x_max[j];
+                if (_x[i][j] > u_max[j]) {
+                    _x[i][j] = u_max[j];
                 }
-                else if (_x[i][j] < x_min[j]){
-                    _x[i][j] = x_min[j];
+                else if (_x[i][j] < u_min[j]){
+                    _x[i][j] = u_min[j];
                 }
             } // END FOR j
         } // End if
@@ -572,9 +605,9 @@ void updateParticles(
 void updateParticlesWithDuConstrains(
 	_hw_real global_min[],
 
-	_hw_real _x[_S][_Nu*_n_U], 
-	_hw_real _y[_S][_Nu*_n_U], 
-	_hw_real _v[_S][_Nu*_n_U]
+	_hw_real _x[_n_S][_Nu*_n_U], 
+	_hw_real _y[_n_S][_Nu*_n_U], 
+	_hw_real _v[_n_S][_Nu*_n_U]
 ){
 #pragma HLS interface ap_bus  port=x
 #pragma HLS interface ap_bus  port=y
@@ -589,7 +622,7 @@ void updateParticlesWithDuConstrains(
     _hw_real r1, r2;
     
     // Update Particles
-    for (int i = 0; i < _S; ++i) {
+    for (int i = 0; i < _n_S; ++i) {
         if(valid_particle[i] == 1){
     	 for (int j = 0; j < _Nu; ++j) {
     	 	for (int k = 0; k < _n_U; ++k){
