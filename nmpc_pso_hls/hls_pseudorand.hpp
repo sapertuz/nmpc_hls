@@ -5,40 +5,65 @@
 #define RAND_INT_MAX 2147483647.0f  // Maximum value for a variable of type int.
 
 template<
-    class _hw_real
+    class _hw_real,
+    unsigned ncores
 >class pseudoRand_gen{
 protected:
-    int rnd_seed;
+    int rnd_seed_co[ncores];
+    char flag[ncores];
     const float out_min;
     const float out_max;
-    const float divider;
-
+    const float divider = 1.0f/(RAND_INT_MAX - RAND_INT_MIN);
+    const int rnd_seed[ncores];
 public:
 constexpr pseudoRand_gen(
-    int new_seed,
+    const int new_seed[ncores],
     const float _out_min,
     const float _out_max
-) : rnd_seed(new_seed), out_min(_out_min), out_max(_out_max),
-    divider(1.0f/(RAND_INT_MAX - RAND_INT_MIN))
+) : rnd_seed(new_seed), 
+    out_min(_out_min), 
+    out_max(_out_max)
 {
 }
-
+//---------------------------------------------------------------------
 _hw_real rand_num (void)
 {
-#pragma HLS inline
+//#pragma HLS inline
 #pragma HLS ALLOCATION instances=mul limit=1 operation
 #pragma HLS ALLOCATION instances=fmul limit=1 operation
 #pragma HLS ALLOCATION instances=fsub limit=1 operation
 #pragma HLS ALLOCATION instances=fadd limit=1 operation
 
+    rnd_seed_co[0] = flag[0]!=1 ? rnd_seed[0] : rnd_seed_co[0];
+    flag[0] = 1;
+    return aux_rand_num(&rnd_seed_co[0]);
+};
+//---------------------------------------------------------------------
+_hw_real rand_num (unsigned core)
+{
+//#pragma HLS inline
+#pragma HLS ALLOCATION instances=mul limit=1 operation
+#pragma HLS ALLOCATION instances=fmul limit=1 operation
+#pragma HLS ALLOCATION instances=fsub limit=1 operation
+#pragma HLS ALLOCATION instances=fadd limit=1 operation
+
+    rnd_seed_co[core] = flag[core]!=1 ? rnd_seed[core] : rnd_seed_co[core];
+    flag[core] = 1;
+    return aux_rand_num(&rnd_seed_co[core]);
+};
+
+private:
+_hw_real aux_rand_num(int *_rnd_seed)
+{
+#pragma HLS inline
     unsigned int hi,lo;
-    hi = 16807 * (rnd_seed >> 16);
-    lo = 16807 * (rnd_seed & 0xFFFF);
+    hi = 16807 * (_rnd_seed[0] >> 16);
+    lo = 16807 * (_rnd_seed[0] & 0xFFFF);
     lo += (hi & 0x7FFF) << 16;
     lo += hi >> 15;
     if (lo > 2147483647)
         lo -= 2147483647;
-    rnd_seed = lo;
+    _rnd_seed[0] = lo;
 
     // int k1;
     // int ix = rnd_seed;
@@ -49,9 +74,9 @@ _hw_real rand_num (void)
     //     ix += 2147483647;
     // rnd_seed = ix;
     
-    float output = ((float)rnd_seed - RAND_INT_MIN) * (out_max - out_min) * divider + out_min;;
-
-    return (_hw_real)output;
+    float output_f = ((float)rnd_seed[0] - RAND_INT_MIN) * (out_max - out_min) * divider + out_min;
+    _hw_real output = output_f;
+    return output;    
 }
 };
 

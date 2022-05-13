@@ -7,16 +7,19 @@
 
 #include "hls_pseudorand.hpp"
 
+#define _ncores 2
+
 int main(int argc, char *argv[]) {
     // printf() displays the string inside quotation
     if (argc == 5)
     {
-        int seed = atoi(argv[1]);
+        int seed[_ncores];
+        seed[0] = atoi(argv[1]); 
         float min = atof(argv[2]);
         float max = atof(argv[3]);
         int count = atoi(argv[4]);
 
-        typedef pseudoRand_gen<float> rand_core_t;
+        typedef pseudoRand_gen<float, _ncores> rand_core_t;
         rand_core_t rand_core(seed, min, max);
         printf("Random Numbers : ");
         for (int i = 0; i < count; i++)

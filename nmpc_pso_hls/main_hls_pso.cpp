@@ -533,13 +533,13 @@ float nonlinear_solver_wrapper(
 
 //#pragma HLS bind_storage variable=local_control_guess type=FIFO impl=LUTRAM
 
-    memcpy_loop_rolled<_real, float, _Nx>(my_x_curr, x_curr );
-    memcpy_loop_rolled<_real, float, _n_U>(my_u_curr, u_curr );
-    memcpy_loop_rolled<_real, float, _Nu*_n_U>(my_last_best, last_best );
-    memcpy_loop_rolled<_real, float, _Nu*_N>(my_xref, xref );
-    memcpy_loop_rolled<_real, float, _n_U>(my_uref, uref );
-    memcpy_loop_rolled<_real, float, _Nx>(my_xss, xss );
-    memcpy_loop_rolled<_real, float, _n_U>(my_uss, uss );
+    memcpy_loop_rolled<_real, float, _Nx>(my_x_curr, (volatile _real *)x_curr );
+    memcpy_loop_rolled<_real, float, _n_U>(my_u_curr, (volatile _real *)u_curr );
+    memcpy_loop_rolled<_real, float, _Nu*_n_U>(my_last_best, (volatile _real *)last_best );
+    memcpy_loop_rolled<_real, float, _Nu*_N>(my_xref, (volatile _real *)xref );
+    memcpy_loop_rolled<_real, float, _n_U>(my_uref, (volatile _real *)uref );
+    memcpy_loop_rolled<_real, float, _Nx>(my_xss, (volatile _real *)xss );
+    memcpy_loop_rolled<_real, float, _n_U>(my_uss, (volatile _real *)uss );
     
     _real cf;
     my_solver.execute(
