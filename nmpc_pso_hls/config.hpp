@@ -16,20 +16,14 @@ typedef float _real_model;
 #define BILLION 1E9
 
 #if defined(_POSIX_MONOTONIC_CLOCK)
-
 /*  The identifier for the system-wide monotonic clock, which is defined
  *  as a clock whose value cannot be set via clock_settime() and which
  *  cannot have backward clock jumps. */
 
-#define CLOCK_ID CLOCK_MONOTONIC
-
+    #define CLOCK_ID CLOCK_MONOTONIC
 #else
-
-#define CLOCK_ID CLOCK_REALTIME
-
+    #define CLOCK_ID CLOCK_REALTIME
 #endif
-
-
 
 
 #ifdef INVERTED_PENDULUM_CONFIG

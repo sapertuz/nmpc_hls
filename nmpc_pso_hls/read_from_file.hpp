@@ -26,7 +26,7 @@ void find_token(std::ifstream& file, std::string str);
 
 int validate_string(std::string str1, std::string str2) {
     if(str1.compare(str2)) {
-#ifdef DEBUG
+#ifdef DEBUG_FILE
     std::cout << "---- " << str2 << " term not found (input was " << str1 << ")" << std::endl;
 #endif        
         return -1;
@@ -45,11 +45,13 @@ void read_line(std::ifstream * file, int number_of_lines) {
 int read_int(std::ifstream * file, std::string str) {
 	std::string temp_str;
 	int tmp_value;
-#ifdef DEBUG
+#ifdef DEBUG_FILE
     std::cout << "-- Reading " << str << std::endl;
 #endif
 	*file >> temp_str >> tmp_value;
-    if(validate_string(temp_str, str)) throw(1);
+    if(validate_string(temp_str, str)){
+        std::cout << "-- Error While read vector " << str << std::endl;
+    } 
 
     return tmp_value;
 }
@@ -68,15 +70,13 @@ int read_int_pos(std::ifstream * file, int position) {
 float read_real(std::ifstream * file, std::string str) {
 	std::string temp_str;
 	float tmp_value;
-#ifdef DEBUG
+#ifdef DEBUG_FILE
     std::cout << "-- Reading " << str << std::endl;
 #endif
 	*file >> temp_str >> tmp_value;
     if(validate_string(temp_str, str)){
-#ifdef DEBUG
-        std::cout << "---- Enter if read " << std::endl;
-#endif  
-        throw(1);
+        std::cout << "-- Error While read real " << str << std::endl;
+        return -1;
     } 
 
     return tmp_value;
@@ -85,22 +85,26 @@ float read_real(std::ifstream * file, std::string str) {
 std::string read_string(std::ifstream * file, std::string str){
     std::string temp_str;
     std::string return_str;
-#ifdef DEBUG
+#ifdef DEBUG_FILE
     std::cout << "-- Reading string: " << str << std::endl;
 #endif
     *file >> temp_str >> return_str;
-    if(validate_string(temp_str, str)) throw(1);
+    if(validate_string(temp_str, str)){
+        std::cout << "-- Error While read string " << str << std::endl;
+    } 
 
     return return_str;
 }
 
 void read_real_vector(std::ifstream * file, std::string str, float * value, int size) {
 	std::string temp_str;
-#ifdef DEBUG
+#ifdef DEBUG_FILE
     std::cout << "-- Reading " << str << std::endl;
 #endif
 	*file >> temp_str;
-    if(validate_string(temp_str, str)) throw(1);
+    if(validate_string(temp_str, str)){
+        std::cout << "-- Error While read vector " << str << std::endl;
+    } 
 
     for (int i = 0; i < size; ++i) {
     	*file >> value[i];
@@ -125,12 +129,12 @@ void find_token(std::ifstream& file, std::string str) {
     while(searching) {
         file_pos = file.tellg();
         file >> temp_str;
-#ifdef DEBUG        
+#ifdef DEBUG_FILE        
         std::cout << "searching: " << temp_str << std::endl;
 #endif
         searching = validate_string(temp_str, str);
         if(file.peek()==EOF) {
-            throw 1;
+            std::cout << "-- Error file EOF " << str << std::endl;
         }
     }
     file.seekg (file_pos);

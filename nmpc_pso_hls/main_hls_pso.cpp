@@ -17,6 +17,9 @@ typedef float _real;
 
 #include "config.hpp"
 #include "hls_pso.hpp"
+#include "hls_system.hpp"
+#include "hls_pseudorand.hpp"
+
 #include "read_from_file.hpp"
 #include "aux_functions.hpp"
 #include "hls_system.hpp"
@@ -28,15 +31,16 @@ typedef float _real;
  * 
  */
 
-
-#define SNIFFBOT_CONFIG
-#define PSO_CONFIG
+//#define SNIFFBOT_CONFIG
+//#define PSO_CONFIG
+const char config_file_std[] = "./config/sniffbot/project_config.txt";
+const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt";
 
 #ifdef PSO_CONFIG
     #define _n_S             10
     #define _KPSO            1
     #define _stable_zero     1
-    #define _maxiter         100
+    #define _maxiter         200
     #define _max_v           10
     #define _w0              0.9
     #define _wf              0.4
@@ -44,6 +48,15 @@ typedef float _real;
     #define _c2              1.0
     #define _threshold       1e-2
     #define _stop_criteria   0
+    const _real rand_min = -1.0;
+    const _real rand_max = 1.0;
+    const int rand_seed[_n_S] = {
+        84680,
+        577726,
+        273600,
+        804402,
+        747952
+    };
 #endif
 
 #ifdef INVERTED_PENDULUM_CONFIG
@@ -93,34 +106,36 @@ typedef float _real;
     const _real  _pmax[] =  {1, 1, 1, 1};
     const _real  _pmin[] =  {-1, -1, -1, -1};
 
-    const unsigned short _controlled_state[] = {1, 1, 1, 1};
+    const unsigned short _controlled_state[] = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
     const _real  _state_upper_limits[_Nx] =  {1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3};
     const _real  _state_lower_limits[_Nx] =  {-1e3, -1e3 -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3};
-    const _real  _Q[] =  {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
-    const _real  _Qf[] =  {10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0};
-    const _real  _R[] =  {0.02, 0.0, 0.0, 0.0};
+    const _real  _Q[] =  {10, 10, 10, 0.5, 0.5, 10, 0, 0, 0,  0, 0, 0};
+    const _real  _Qf[] =  {10, 10, 10, 1, 1, 10, 0, 0, 0, 0, 0, 0};
+    const _real  _R[] =  {0.002, 0.002, 0.002, 0.002};
 
     #define  _Rising_Time 0
     const _real _tr[] =  {10, 10, 10, 0, 0, 8, 0, 0, 0, 0, 0, 0};
     const _real  initial_state[] =  {7.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 #endif
 
+
 /***************** Macros (Inline Functions) Definitions *********************/
 
 /*
  * Wrapper for non_linear solver
  */
-float nonlinear_solver_wrapper(
-    float x_curr[_Nx], 
-    float u_curr[_n_U], 
+int nonlinear_solver_wrapper(
+    volatile float *x_curr,//[_Nx], 
+    volatile float *u_curr,//[_n_U], 
     int iteration, 
-    float last_best[_Nu*_n_U], 
-    float xref[_Nu*_Nx], 
-    float uref[_n_U], 
-    float xss[_Nx],
-    float uss[_n_U], 
-    float new_best[_Nu*_n_U],
-    float * J
+    volatile float *last_best,//[_Nu*_n_U], 
+    volatile float *xref,//[_Nu*_Nx], 
+    volatile float *uref,//[_n_U], 
+    volatile float *xss,//[_Nx],
+    volatile float *uss,//[_n_U], 
+    
+    float *new_best,//[_Nu*_n_U],
+    float *J
 );
 
 /*
@@ -128,8 +143,8 @@ float nonlinear_solver_wrapper(
  */
 
 void update_xss(int iter, int xss_index);
-void initializeFilteringCoefficients(int number_of_states);
 void initialize_LastBest(float * last_best);
+void initializeFilteringCoefficients(int number_of_states);
 void add_disturbance(int iter);
 
 /************************** Variable Definitions *****************************/
@@ -142,7 +157,8 @@ void add_disturbance(int iter);
 /*
  * Simulation Variables
  */
-
+char *config_file;
+int twist_ref = 0;
 _real SimulationTime;
 
 typedef System<float, _Nh, _Nx, _n_U, _Nu> T_system;
@@ -171,9 +187,9 @@ _real * cost_history;
 _real * alpha_ref;        // Filtered step coeficient for 95% of rising time
 
 _real * disturbance;
+int disturbance_size = 0;
 _real ** disturbance_history;
 _real ** disturbance_matrix;
-int disturbance_size;
 _real friction_coefficient;
 
 /*****************************************************************************/
@@ -191,28 +207,44 @@ _real friction_coefficient;
 
 int main(int argc, char ** argv){
     std::cout << "Start KPSO NMPC" << std::endl;
+    twist_ref = 0;
     char *config_file;
-    
-    try {
-        std::cout << "Running with standard project_config file." << std::endl;
-        char config_file[] = "./config/sniffbot/project_config.txt";
-
+    char *sim_config_file;    
+//    try {
+        if (argc == 3){
+            config_file = argv[1];
+            sim_config_file = argv[2];
+        }else{
+            std::cout << "Running with standard project_config file." << std::endl;
+            config_file = (char *) malloc(sizeof(config_file_std)*sizeof(config_file_std));
+            sim_config_file = (char *) malloc(sizeof(sim_config_file_std)*sizeof(sim_config_file_std)); 
+            std::memcpy(config_file, config_file_std, sizeof(config_file_std)*sizeof(config_file_std[0]));
+            std::memcpy(sim_config_file, sim_config_file_std, sizeof(sim_config_file_std)*sizeof(sim_config_file_std[0]));
+        }
+        // config_file = (char *) malloc(sizeof(config_file_tmp)*sizeof(config_file_tmp));
+        // std::memcpy
+        std::cout << "-file : " << config_file << std::endl;
         std::string file(config_file);
 
         std::cout << "- Opening project config file." << std::endl;
         std::ifstream _config;
         _config.open(config_file, std::ios::in);
-        if(!_config.is_open())
-            throw std::runtime_error("Project file not found.");
+        if(!_config.is_open()){
+            std::cout << "Project file not found.";
+            return -1;
+        }
         std::cout << "- Reading info from project config file." << std::endl;
         sim_type = read_string((std::ifstream *)&_config, (std::string)"sim_type");
         simulation_config_file = read_string((std::ifstream *)&_config, (std::string)"simulation_config_file");
         _config.close();
-
+                
         std::ifstream sim_config;
-        sim_config.open(simulation_config_file, std::ios::in);
-        if(!sim_config.is_open())
-            throw std::runtime_error("System model config file not found.");
+//        sim_config.open(simulation_config_file, std::ios::in);
+        sim_config.open(sim_config_file, std::ios::in);
+        if(!sim_config.is_open()){
+            std::cout << "System model config file not found.";
+            return -1;
+        }
         std::string temp_str;
 
         _real * u_ref_input;
@@ -237,40 +269,48 @@ int main(int argc, char ** argv){
         ref_size = read_int(&sim_config, (std::string)"state_ref");
 
         // Allocate memory for state and control references
-        vector_size = qtd_pontos + _Nh;
-        xref = (_real *) malloc(vector_size*_Nx*sizeof(_real));
-        uref = (_real *) malloc(vector_size*sizeof(_real));
+        xref = (_real *) malloc(qtd_pontos*_Nx*sizeof(_real));
+        uref = (_real *) malloc(qtd_pontos*_n_U*sizeof(_real));
         xss =  (_real *) malloc(_Nx*sizeof(_real));
-        if((state_matrix = alloc_matrix(ref_size, _Nx+1)) == NULL) {throw(1);}
+        disturbance = (_real *) malloc(_n_U*sizeof(_real));
+        if((state_matrix = alloc_matrix(ref_size, _Nx+1)) == NULL) {return(-1);}
+        if((state_history = alloc_matrix(qtd_pontos, _Nx)) == NULL) {return -1;}
+        if((control_history = alloc_matrix(qtd_pontos, _n_U)) == NULL) {return -1;}
+        // if((disturbance_history = alloc_matrix(qtd_pontos, _n_U+1)) == NULL) {return -1;}
+        // if((disturbance_matrix = alloc_matrix(disturbance_size, _n_U+1)) == NULL) {return -1;}
 
-        for (int i = 0; i < ref_size; i++) {
-            for (int j = 0; j < (_Nx+1); ++j) {
-    		sim_config >> state_matrix[i][j];
+        float state_tmp;
+        for (int j = 0; j < ref_size; ++j) {
+            for (int i = 0; i < (_Nx+1); i++) {
+                sim_config >> state_tmp;
+                state_matrix[j][i] = state_tmp;
             }
         }
 
         // Set up initial Control and State Reference vectors
         int k = 0;
+        int index;
         float sim_time = 0.0;
-        for (int i = 0; i < vector_size; ++i) {
+        for (int i = 0; i < qtd_pontos; ++i) {
+            for (int j = 0; j < _Nx; ++j) {
+                xref[i*_Nx+j] = state_matrix[k][j+1];
+            }
+            for (unsigned int j = 0; j < _n_U; j++){
+                uref[i*_n_U+j] = u_ref_input[j];
+            }
             if(sim_time >= state_matrix[k][0]) {
                 if(k < (ref_size-1))
                     k++;
             }
             sim_time = sim_time + _Ts;
-            for (int j = 0; j < _Nx; ++j) {
-                xref[i*_Nx+j] = state_matrix[k][j+1];
-            }
-    //#ifdef DEBUG
-    //        print_array("xref", &xref[i*Nx], _Nx, 0);
-    //#endif
-            uref[i] = u_ref_input[0];
         }
+      
 
-	}
-    catch(std::runtime_error &e) {
-		std::cout << "Exception: " << e.what() << std::endl;
-	}
+//	}
+//    catch(std::runtime_error &e) {
+//		std::cout << "Exception: " << e.what() << std::endl;
+//	}
+    std::cout << "- Loaded all." << std::endl;
 
     T_system current_system(
         _u_max, 
@@ -287,7 +327,7 @@ int main(int argc, char ** argv){
 
     int iter = 0;
     int xss_index = 0;
-	int qtd_iter;
+	int qtd_iter = 0;
 
 	float * last_best;
 	float * new_best;
@@ -299,6 +339,8 @@ int main(int argc, char ** argv){
 	new_best = (float *) malloc(_Nu*_n_U*sizeof(float));
 	curr_state = (float *) malloc(_Nx*sizeof(float));
 	next_state = (float *) malloc(_Nx*sizeof(float));
+    iterations = (float *) malloc(qtd_pontos*sizeof(float));
+    cost_history = (float *) malloc(qtd_pontos*sizeof(float));
 
     initialize_LastBest(last_best);
 
@@ -312,34 +354,33 @@ int main(int argc, char ** argv){
     float v_curr[_n_U];
     float u_ant[_n_U];
 
-    memset(u_curr, 0, _n_U * sizeof(float));
-    memset(v_curr, 0, _n_U * sizeof(float));
-    memset(u_ant, 0, _n_U * sizeof(float));
+    memset(u_curr, (float)0.0, _n_U * sizeof(float));
+    memset(v_curr, (float)0.0, _n_U * sizeof(float));
+    memset(u_ant, (float)0.0, _n_U * sizeof(float));
+    
+    for (int i = 0; i < _Nx; i++)
+        curr_state[i] = initial_state[i];
 
-	while(iter < qtd_pontos) {
-
-        for (int i = 0; i < _n_U; ++i) {
-            u_ant[i] = u_curr[i];
-        }
+//    qtd_pontos = 1;
+	while(iter < qtd_pontos - _Nh) {
 
         update_xss(iter, xss_index);
 
         clock_gettime(CLOCK_ID, &requestStartCycle);
 
         // qtd_iter = solver->execute(curr_state, u_curr, iter, last_best, &xref[iter*_Nx], &uref[iter], xss, uss, &J_cost);
-        qtd_iter = nonlinear_solver_wrapper(curr_state, u_curr, iter, last_best, &xref[iter*_Nx], &uref[iter], xss, uss, new_best, &J_cost);
-
-
-        for (int i = 0; i < _n_U; ++i) {
-            u_curr[i] = new_best[i*_Nu];
-        }
-    
+        qtd_iter = nonlinear_solver_wrapper(curr_state, u_curr, iter, last_best, &xref[iter*_Nx], &uref[iter*_n_U], xss, uss, new_best, &J_cost);
+        
         clock_gettime(CLOCK_ID, &requestEndCycle);
         cycle_time = ( requestEndCycle.tv_sec - requestStartCycle.tv_sec ) + ( requestEndCycle.tv_nsec - requestStartCycle.tv_nsec ) / BILLION;
         if(cycle_time > max_cycle_time) {
             max_cycle_time = cycle_time;
         }
 
+        for (int i = 0; i < _n_U; ++i) {
+            u_curr[i] = new_best[i*_Nu];
+        }
+        
 		// Save Data for Statistics
 		for (int i = 0; i < _n_U; ++i) {
 			control_history[iter][i] = u_curr[i];
@@ -352,13 +393,15 @@ int main(int argc, char ** argv){
         // Insert Disturbance
         // ===============================================
         for (int j = 0; j < _n_U; ++j) {
-                disturbance[j] = u_curr[j];
+            disturbance[j] = u_curr[j];
         }
+        /*
+         * No disturbance for now
         if(disturbance_size > 0){
             //std::cout << "With disturbance" << std::endl;
             add_disturbance(iter);
         }
-
+        */
         // output model
         current_system.one_step_prediction(next_state, curr_state, disturbance);
         
@@ -372,22 +415,23 @@ int main(int argc, char ** argv){
 
 
 		iter++;
+        
+        for (int i = 0; i < _n_U; ++i) {
+            u_ant[i] = u_curr[i];
+        }
 
 #ifdef PRINT_TO_TERMINAL        
         // Print Iteration Output
-        std::cout << "Sim iter: " << std::right << std::setw(2) << iter << " | Solv iter: " << qtd_iter;
-        for (int i = 0; i < _n_U; ++i)
-        {
-            // printf(" | u[%d]: %.2f\t", i, u_curr[i]);
-        	std::cout << " | u[" << i << "]: "<< std::fixed << std::setprecision(2) << std::right << std::setw(6) << u_curr[i] << "\t";
-        } 
-        std::cout << "\tJ: " << std::fixed << std::setprecision(2) << std::right << std::setw(6) << J_cost << " | "; 
-        for (int i = 0; i < _Nx; i++)
-            std::cout << std::right << std::setw(8) << std::fixed << std::setprecision(2) << next_state[i] << " ";
-
+        std::cout << "Sim iter[" << iter << "]"<< std::endl;
+        std::cout << "\t State"; print_formatted_float_array(curr_state, _Nx, 2, 6);
+        std::cout << std::endl;
+        std::cout << "\t Set  "; print_formatted_float_array(&xref[iter*_Nx], _Nx, 2, 6); 
+        std::cout << std::endl;
+        std::cout << "\t Control"; print_formatted_float_array(u_curr, _n_U, 2, 6); 
+        std::cout << std::endl;
+        std::cout << "\t Ji   " << J_cost; 
         std::cout << std::endl;
 #endif
-
 
     }
 
@@ -401,6 +445,10 @@ int main(int argc, char ** argv){
     if(new_best != NULL) free(new_best);
 	if(curr_state != NULL) free(curr_state);
 	if(next_state != NULL) free(next_state);
+    if(state_history != NULL) free(state_history);
+    if(control_history != NULL) free(control_history);
+    // if(disturbance_history != NULL) free(disturbance_history);
+    // if(disturbance_matrix != NULL) free(disturbance_matrix);
 
     return 0;
 }
@@ -424,7 +472,7 @@ void initializeFilteringCoefficients(int number_of_states){
     }
 }
 
-void initialize_LastBest(_real * last_best){
+void initialize_LastBest(float * last_best){
     for (int i = 0; i < _Nu*_n_U; ++i) {
         last_best[i] = 0.0;
     }    
@@ -445,7 +493,7 @@ void add_disturbance(int iter){
         
         if((iter  > disturbance_start) && (iter < disturbance_end)){
 #ifdef PRINT_TO_TERMINAL                    
-            std::cout << "Perturbação" << std::endl;
+            std::cout << "Perturbacao" << std::endl;
 #endif            
             for (int j = 0; j < _n_U; ++j) {
                 disturbance[j] = disturbance_matrix[i][j+1] + u_curr[j];
@@ -460,17 +508,18 @@ void add_disturbance(int iter){
     }
 }
 
-float nonlinear_solver_wrapper(
-    float x_curr[_Nx], 
-    float u_curr[_n_U], 
+int nonlinear_solver_wrapper(
+    volatile float *x_curr,//[_Nx], 
+    volatile float *u_curr,//[_n_U], 
     int iteration, 
-    float last_best[_Nu*_n_U], 
-    float xref[_Nu*_Nx], 
-    float uref[_n_U], 
-    float xss[_Nx],
-    float uss[_n_U], 
-    float new_best[_Nu*_n_U],
-    float * J
+    volatile float *last_best,//[_Nu*_n_U], 
+    volatile float *xref,//[_Nu*_Nx], 
+    volatile float *uref,//[_n_U], 
+    volatile float *xss,//[_Nx],
+    volatile float *uss,//[_n_U], 
+    
+    float *new_best,//[_Nu*_n_U],
+    float *J
 ){
 #pragma HLS INTERFACE s_axilite port=return         bundle=control
 
@@ -494,10 +543,37 @@ float nonlinear_solver_wrapper(
 #pragma HLS INTERFACE m_axi depth=4     port=uss        offset=slave bundle=input
 #pragma HLS INTERFACE m_axi depth=120   port=new_best   offset=slave bundle=input
 
+    // System Core Generator
+    typedef System<_real,_Nh, _Nx, _n_U, _Nu> _system_t; 
+    _system_t _hw_system(
+        _u_max, 
+        _u_min, 
+        _du_max,
+        _controlled_state,
+        _state_upper_limits, 
+        _state_lower_limits, 
+        _Q, 
+        _Qf, 
+        _R, 
+        _uss, 
+        _Ts
+    );
+    _system_t *_hw_system_ptr = &_hw_system;
+
+    // Pseudo Random Core Generator
+    typedef pseudoRand_gen<_real, _n_S> _randCore_t;
+    _randCore_t _hw_rand_core(
+        (int *)rand_seed, 
+        (const float)rand_min, 
+        (const float)rand_max
+    );
+    _randCore_t *_hw_rand_core_ptr = &_hw_rand_core;
+
+    // Nonlinear PSO Solver
     const _real slope = (_wf-_w0)/_maxiter;
     const _real slope_init = 0;
 
-    typedef PSO<_real, _n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
+    typedef PSO<_real, _randCore_t, _system_t,_n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
     T_solver my_solver(
         _stable_zero,
         _max_v,
@@ -510,39 +586,43 @@ float nonlinear_solver_wrapper(
         _u_min,
         _u_max,
         _du_max,
-        _controlled_state,
-        _state_upper_limits, 
-        _state_lower_limits, 
-        _Q, 
-        _Qf, 
-        _R, 
-        _uss,
-        _Ts
+        _uss
+        ,
+        // _controlled_state,
+        // _state_upper_limits, 
+        // _state_lower_limits, 
+        // _Q, 
+        // _Qf, 
+        // _R, 
+        // _Ts
+        // ,
+        _hw_system_ptr,
+        _hw_rand_core_ptr
 	);
 
-	volatile _real my_x_curr[_Nx] ;
-	volatile _real my_u_curr[_n_U] ;
-	volatile _real my_last_best[_Nu*_n_U] ;
-	volatile _real my_xref[_Nu*_N];
-	volatile _real my_uref[_n_U] ;
-	volatile _real my_xss[_Nx];
-	volatile _real my_uss[_n_U] ;
-	
+    int iterations;
+	_real my_x_curr[_Nx] ;
+	_real my_u_curr[_n_U] ;
+	_real my_last_best[_n_U*_Nu] ;
+	_real my_xref[_Nx*_Nh];
+	_real my_uref[_n_U] ;
+	_real my_xss[_Nx];
+	_real my_uss[_n_U] ;
+
 	_real my_new_best[_Nu*_n_U];
-	_real * my_J;
+	_real my_J;
 
 //#pragma HLS bind_storage variable=local_control_guess type=FIFO impl=LUTRAM
 
-    memcpy_loop_rolled<_real, float, _Nx>(my_x_curr, (volatile _real *)x_curr );
-    memcpy_loop_rolled<_real, float, _n_U>(my_u_curr, (volatile _real *)u_curr );
-    memcpy_loop_rolled<_real, float, _Nu*_n_U>(my_last_best, (volatile _real *)last_best );
-    memcpy_loop_rolled<_real, float, _Nu*_N>(my_xref, (volatile _real *)xref );
-    memcpy_loop_rolled<_real, float, _n_U>(my_uref, (volatile _real *)uref );
-    memcpy_loop_rolled<_real, float, _Nx>(my_xss, (volatile _real *)xss );
-    memcpy_loop_rolled<_real, float, _n_U>(my_uss, (volatile _real *)uss );
+    memcpy_loop_rolled<_real, float, _Nx>(my_x_curr, (volatile float *)x_curr );
+    memcpy_loop_rolled<_real, float, _n_U>(my_u_curr, (volatile float *)u_curr );
+    memcpy_loop_rolled<_real, float, _Nu*_n_U>(my_last_best, (volatile float *)last_best );
+    memcpy_loop_rolled<_real, float, _Nu*_Nx>(my_xref, (volatile float *)xref );
+    memcpy_loop_rolled<_real, float, _n_U>(my_uref, (volatile float *)uref );
+    memcpy_loop_rolled<_real, float, _Nx>(my_xss, (volatile float *)xss );
+    memcpy_loop_rolled<_real, float, _n_U>(my_uss, (volatile float *)uss );
     
-    _real cf;
-    my_solver.execute(
+    iterations = my_solver.execute(
         my_x_curr, 
         my_u_curr, 
         iteration, 
@@ -551,7 +631,10 @@ float nonlinear_solver_wrapper(
         my_uref, 
         my_xss,
         my_new_best,
-        my_J
+        &my_J
     );
-    return (float) cf;
+
+    memcpy_loop_rolled<float, _real, _Nu*_n_U>(new_best, (volatile float *)my_new_best );
+    J[0] = (float) my_J;
+    return iterations;
 }

@@ -20,11 +20,11 @@ int main(int argc, char *argv[]) {
         int count = atoi(argv[4]);
 
         typedef pseudoRand_gen<float, _ncores> rand_core_t;
-        rand_core_t rand_core(seed, min, max);
+        rand_core_t rand_core((int *)seed, (const float)min, (const float)max);
         printf("Random Numbers : ");
         for (int i = 0; i < count; i++)
         {
-            printf("%.3f, ", rand_core.rand_num());
+            printf("| %.3f |", rand_core.rand_num());
         }
         printf("\n");
         return 0;

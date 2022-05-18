@@ -1,2 +1,2 @@
 sim_type simulation
-simulation_config_file config/sniffbot/simulation_config_ring.txt
+simulation_config_file ./config/sniffbot/simulation_config_ring.txt

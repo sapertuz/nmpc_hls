@@ -55,7 +55,7 @@ protected:
     const _hw_real *Qf;//[_Nx];
     const _hw_real *R;//[_n_U];
 
-    const unsigned N;
+    const unsigned N = _Nh;
     // Temporary variables for cost functions computations
     //const _hw_real *uu;//[_Nh];
     //_hw_real *x_hat;//[_Nx*_Nh];
@@ -85,8 +85,7 @@ public:
         uss(_uss), u_max(_u_max), u_min(_u_min), du_max(_du_max),
         controlled_state(_controlled_state), 
         state_upper_limits(_state_upper_limits), state_lower_limits(_state_lower_limits),
-        Q(_Q), Qf(_Qf), R(_R),
-		N(_Nh)
+        Q(_Q), Qf(_Qf), R(_R)
     {};
 // ---------------------------------------------------
 	void nmpc_cost_function(

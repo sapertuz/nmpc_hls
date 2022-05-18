@@ -71,7 +71,7 @@ typedef float _real;
     const _real  _pmax[] =  {1, 1, 1, 1};
     const _real  _pmin[] =  {-1, -1, -1, -1};
 
-    const unsigned short _controlled_state[] = {1, 1, 1, 1};
+    const unsigned short _controlled_state[] = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
     const _real  _state_upper_limits[_Nx] =  {1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3};
     const _real  _state_lower_limits[_Nx] =  {-1e3, -1e3 -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3};
     const _real  _Q[] =  {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};

@@ -13,8 +13,8 @@ protected:
     char flag[ncores];
     const float out_min;
     const float out_max;
-    const float divider = 1.0f/(RAND_INT_MAX - RAND_INT_MIN);
-    const int rnd_seed[ncores];
+    const float divider;
+    const int *rnd_seed;
 public:
 constexpr pseudoRand_gen(
     const int new_seed[ncores],
@@ -22,7 +22,8 @@ constexpr pseudoRand_gen(
     const float _out_max
 ) : rnd_seed(new_seed), 
     out_min(_out_min), 
-    out_max(_out_max)
+    out_max(_out_max),
+    divider(1.0f/(RAND_INT_MAX - RAND_INT_MIN))
 {
 }
 //---------------------------------------------------------------------
@@ -34,7 +35,7 @@ _hw_real rand_num (void)
 #pragma HLS ALLOCATION instances=fsub limit=1 operation
 #pragma HLS ALLOCATION instances=fadd limit=1 operation
 
-    rnd_seed_co[0] = flag[0]!=1 ? rnd_seed[0] : rnd_seed_co[0];
+    rnd_seed_co[0] = flag[0]==1 ? rnd_seed_co[0] : rnd_seed[0];
     flag[0] = 1;
     return aux_rand_num(&rnd_seed_co[0]);
 };
@@ -47,7 +48,7 @@ _hw_real rand_num (unsigned core)
 #pragma HLS ALLOCATION instances=fsub limit=1 operation
 #pragma HLS ALLOCATION instances=fadd limit=1 operation
 
-    rnd_seed_co[core] = flag[core]!=1 ? rnd_seed[core] : rnd_seed_co[core];
+    rnd_seed_co[core] = flag[core]==1 ? rnd_seed_co[core] : rnd_seed[core];
     flag[core] = 1;
     return aux_rand_num(&rnd_seed_co[core]);
 };
@@ -64,6 +65,7 @@ _hw_real aux_rand_num(int *_rnd_seed)
     if (lo > 2147483647)
         lo -= 2147483647;
     _rnd_seed[0] = lo;
+    //printf("%.1f ", ((float)rnd_seed[0]));
 
     // int k1;
     // int ix = rnd_seed;
@@ -74,7 +76,7 @@ _hw_real aux_rand_num(int *_rnd_seed)
     //     ix += 2147483647;
     // rnd_seed = ix;
     
-    float output_f = ((float)rnd_seed[0] - RAND_INT_MIN) * (out_max - out_min) * divider + out_min;
+    float output_f = ((float)_rnd_seed[0] - RAND_INT_MIN) * (out_max - out_min) * divider + out_min;
     _hw_real output = output_f;
     return output;    
 }
