@@ -259,7 +259,7 @@ int execute(
 
 //#if (n_U > 1)
 //    if((iteration == 0) && (n_U > 1)) {
-//	equalizeParticles(x, iteration);
+	equalizeParticles(x, iteration);
 //    }        
 //#endif
 
@@ -394,9 +394,9 @@ void initializeConstrains(
 		_hw_real u_curr_tmp = u_curr[i];
 
         _hw_real x_max_first_temp = u_curr_tmp + du_max[i]; //controled_system->acc_max[i];
-		x_max_first[i] = (x_max_first_temp > u_max[i]) ? u_max[i]: x_max_first_temp;
+		_hw_real x_min_first_temp = u_curr_tmp + du_min[i];//controled_system->acc_min[i];        
 
-		_hw_real x_min_first_temp = u_curr_tmp + (-du_max[i]);//controled_system->acc_min[i];        
+		x_max_first[i] = (x_max_first_temp > u_max[i]) ? u_max[i]: x_max_first_temp;
 		x_min_first[i] = (x_min_first_temp < u_min[i])? u_min[i]: x_min_first_temp;	
 	}
 }
@@ -446,7 +446,7 @@ void equalizeParticles(
 #pragma HLS ALLOCATION instances=hadd limit=1 operation
 #pragma HLS ALLOCATION instances=hsub limit=1 operation
 */	
-	_real x_tmp;
+	_hw_real x_tmp;
 	if (iteration == 0){	
     for (unsigned int i = 0; i < n_S; ++i) {
 #pragma UNROLL

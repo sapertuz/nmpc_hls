@@ -68,15 +68,26 @@ void PSO::initializeConstrains(
 ){
 	// Initialize constrains based on current state
     
-	for (int i = 0; i < Nc; ++i){
-        x_max_first[i] = u_curr[i] + controled_system->acc_max[i];
-        x_min_first[i] = u_curr[i] + controled_system->acc_min[i];
+	// for (int i = 0; i < Nc; ++i){
+    //     x_max_first[i] = u_curr[i] + controled_system->acc_max[i];
+    //     x_min_first[i] = u_curr[i] + controled_system->acc_min[i];
         
-		if (x_max_first[i] > x_max[i])
-		    x_max_first[i] = x_max[i];
-		if (x_min_first[i] < x_min[i])
-		    x_min_first[i] = x_min[i];	
+	// 	if (x_max_first[i] > x_max[i])
+	// 	    x_max_first[i] = x_max[i];
+	// 	if (x_min_first[i] < x_min[i])
+	// 	    x_min_first[i] = x_min[i];	
+	// }
+
+    for (unsigned int i = 0; i < Nc; ++i){
+		_real u_curr_tmp = u_curr[i];
+
+        _real x_max_first_temp = u_curr_tmp + du_max[i]; //controled_system->acc_max[i];
+		_real x_min_first_temp = u_curr_tmp - du_max[i];//controled_system->acc_min[i];        
+
+		x_max_first[i] = (x_max_first_temp > x_max[i]) ? x_max[i]: x_max_first_temp;
+		x_min_first[i] = (x_min_first_temp < x_min[i])? x_min[i]: x_min_first_temp;	
 	}
+
 }
 
 void PSO::verifyControlConstrains(
@@ -122,6 +133,7 @@ void PSO::initializeParticlesWithDuConstrains(
     _real u_curr[], 
     _real uss[]) 
 {
+/*
     for (int i = 0; i < S; ++i) {
         for (int j = 0; j < Nu; ++j) {
             int idx = j*Nc;
@@ -148,14 +160,49 @@ void PSO::initializeParticlesWithDuConstrains(
 		    }
 		}
 	}
+*/
+	_hw_real x_ant[_Nc];
+	memcpy_loop_rolled(x_ant, u_curr, _Nc);
+
+	for (unsigned int i = 0; i < S; ++i) {
+		for (unsigned int j = 0; j < Nu; ++j) {
+			int idx = j*Nc;
+			for (unsigned int k = 0; k < Nc; ++k) {
+				_hw_real rand_tmp = rand_real();
+		        _hw_real x_tmp = (u_curr[k] + (-du_max[k])) + ((_hw_real)2.0*du_max[k]) * rand_tmp; //random->read(); 
+				verifyControlConstrains(&x[i][idx], k);
+                y[i][idx] = uss[k];
+		        v[i][idx] = ini_v;
+                valid_particle[i] = 1;
+				x_ant[k] = x_tmp;
+				idx++;
+		    }
+		}
+	}
+
 }
 
 void PSO::equalizeParticlesVant() {
-    for (int j = 0; j < Nu; ++j) {
-        for (int k = 1; k < Nc; ++k) {
-            int idx = k*Nu+j;
-            for (int i = 0; i < S; ++i) {
-                x[i][idx] = x[i][j];
+    // for (int j = 0; j < Nu; ++j) {
+    //     for (int k = 1; k < Nc; ++k) {
+    //         int idx = k*Nu+j;
+    //         for (int i = 0; i < S; ++i) {
+    //             x[i][idx] = x[i][j];
+    //         }
+    //     }
+    // }
+
+    _real x_tmp;
+	for (unsigned int i = 0; i < S; ++i) {
+#pragma UNROLL
+		for (unsigned int k = 1; k < Nu; ++k) {
+	 	   	int idx1 = k*Nc;
+	 	   	int idx2 = 0;
+			for (unsigned int j = 0; j < Nc; ++j) {
+				x_tmp = x[i][idx2];
+                x[i][idx1] = x_tmp;
+				idx1++;
+				idx2++;
             }
         }
     }
@@ -165,19 +212,32 @@ void PSO::initializeLastBestKPSO(
     _real last_best[]
 ) {
 	// Uses KPSO (best last position)
-	for (int j = 0; j < Nc; ++j) {
-	   	for (int i = 0; i < (Nu-1); ++i) {
-	   		x[0][j*Nu+i] = last_best[j*Nu+i+1];
-            if(i==0){
-                if (x[0][j*Nu+i] > x_max_first[j])
-                    x[0][j*Nu+i] = x_max_first[j];
-                if (x[0][j*Nu+i] < x_min_first[j])
-                    x[0][j*Nu+i] = x_min_first[j];
-            }
+	// for (int j = 0; j < Nc; ++j) {
+	//    	for (int i = 0; i < (Nu-1); ++i) {
+	//    		x[0][j*Nu+i] = last_best[j*Nu+i+1];
+    //         if(i==0){
+    //             if (x[0][j*Nu+i] > x_max_first[j])
+    //                 x[0][j*Nu+i] = x_max_first[j];
+    //             if (x[0][j*Nu+i] < x_min_first[j])
+    //                 x[0][j*Nu+i] = x_min_first[j];
+    //         }
                 
-	   	}
-	   	x[0][(j+1)*Nu-1] = last_best[(j+1)*Nu-1];        
+	//    	}
+	//    	x[0][(j+1)*Nu-1] = last_best[(j+1)*Nu-1];        
+	// }
+
+    for (unsigned int i = 0; i < Nc; i++){
+		_real last_best_tmp = last_best[i];
+		_real x_local;
+		x_local = (last_best_tmp > x_max_first[i]) ? x_max_first[i] : last_best_tmp;
+		x_local = (last_best_tmp < x_min_first[i]) ? x_max_first[i] : last_best_tmp;
+		x[0][i] = x_local;
 	}
+	
+	for (unsigned int i = Nc; i < (Nu*Nc); i++) {
+		x[0][i] = last_best[i];			
+	}
+
 }
 
 void PSO::initializeStableZero(
@@ -187,28 +247,48 @@ void PSO::initializeStableZero(
 ){
     // Starts one particle with all Zeros for 
     // stable response after equilibrium is reached
+
+    // int idx;
+   	// for (int k = 0; k < Nc; ++k){
+    //     for (int i = 0; i < Nu; ++i) {
+    //         idx = k*Nu+i;
+    //         x[index][idx] = uss[0];
+    //         if(i==0){
+    //             if((x[index][idx] - u_curr[k]) > du_max[k]){
+    //                 x[index][idx] = du_max[k];
+    //             }
+    //             else if((x[index][idx] - u_curr[k]) < -du_max[k]){
+    //                 x[index][idx] = -du_max[k];
+    //             }
+    //         }
+    //         else{
+    //             if((x[index][idx] - x[index][idx]) > du_max[k]){
+    //                 x[index][idx] = du_max[k];
+    //             }
+    //             else if((x[index][idx] - x[index][idx]) < -du_max[k]){
+    //                 x[index][idx] = -du_max[k];
+    //             }
+    //         }
+    //         verifyControlConstrains(&x[index][idx], k); 
+    //     }
+   	// }
+
     int idx;
-   	for (int k = 0; k < Nc; ++k){
-        for (int i = 0; i < Nu; ++i) {
-            idx = k*Nu+i;
-            x[index][idx] = uss[0];
-            if(i==0){
-                if((x[index][idx] - u_curr[k]) > du_max[k]){
-                    x[index][idx] = du_max[k];
-                }
-                else if((x[index][idx] - u_curr[k]) < -du_max[k]){
-                    x[index][idx] = -du_max[k];
-                }
-            }
-            else{
-                if((x[index][idx] - x[index][idx]) > du_max[k]){
-                    x[index][idx] = du_max[k];
-                }
-                else if((x[index][idx] - x[index][idx]) < -du_max[k]){
-                    x[index][idx] = -du_max[k];
-                }
-            }
-            verifyControlConstrains(&x[index][idx], k); 
+	_real x_ant[_n_U];
+	memset_loop(x_ant, (const _real)0.0, Nc);
+   	for (unsigned int k = 0; k < Nu; ++k){
+        idx = k*Nc;
+		for (unsigned int i = 0; i < Nc; ++i) {
+            _hw_real x_tmp = uss[i];
+			_hw_real comp_tmp = (k == 0) ? x_tmp - u_curr[i] : x_tmp - x_ant[i];
+
+			x_tmp = (comp_tmp > du_max[i]) ? du_max[i] : x_tmp;
+			x_tmp = (comp_tmp < (-du_max[i])) ? -du_max[i] : x_tmp;
+
+            verifyControlConstrains(&x_tmp, i); 
+            x[index][idx] = x_tmp;
+			x_ant[i] = x_tmp;
+			idx++;
         }
    	}
 }
@@ -461,4 +541,17 @@ _real PSO::min_array(_real array[], int * pos) {
 	}
 	*pos = pos_temp;
 	return min;
+}
+
+void PSO::memcpy_loop_rolled(_real *dest, _real *src, unsigned n){
+    for (unsigned short i=0; i<n; i++){
+        dest[i] = src[i];
+    }
+}
+
+void PSO::memset_loop(_real *array, const _real data, unsigned n){
+    // Copy contents of src[] to dest[]
+    for (unsigned short i=0; i<n; i++){
+        array[i] = data;
+    }
 }

@@ -73,7 +73,7 @@ typedef float _real; //typedef double _real;
 #endif
 
 // PSO configuration variables
-#define _S 20
+#define _S 10
 #define _KPSO 1
 #define _stable_zero 1
 #define _maxiter 100
