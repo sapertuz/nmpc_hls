@@ -97,7 +97,12 @@ const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt
     const _real  _Ts = 0.05;
     const _real  _u_max[] =  {100, 100, 100, 100};
     const _real  _u_min[] =  {-100, -100, -100, -100};
-    const _real  _du_max[] =  {20, 20, 20, 20};
+    const _real  _du_max[] =  {
+        20, 
+        20, 
+        20, 
+        20
+    };
     const _real  _uss[] = {0.0, 0.0, 0.0, 0.0};
 
     #define  _Parametrization 0
@@ -109,9 +114,28 @@ const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt
     const unsigned short _controlled_state[] = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
     const _real  _state_upper_limits[_Nx] =  {1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3};
     const _real  _state_lower_limits[_Nx] =  {-1e3, -1e3 -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3};
-    const _real  _Q[] =  {10, 10, 10, 0.5, 0.5, 10, 0, 0, 0,  0, 0, 0};
-    const _real  _Qf[] =  {10, 10, 10, 1, 1, 10, 0, 0, 0, 0, 0, 0};
-    const _real  _R[] =  {0.002, 0.002, 0.002, 0.002};
+    const _real  _Q[] =  {
+        50, 
+        50, 
+        50, 
+        50, 
+        50, 
+        50, 
+        0, 0, 0, 0, 0, 0};
+    const _real  _Qf[] =  {
+        200, 
+        200, 
+        200, 
+        200, 
+        200, 
+        200, 
+        0, 0, 0, 0, 0, 0};
+    const _real  _R[] =  {
+        0.0005, 
+        0.0005, 
+        0.0005, 
+        0.0005
+    };
 
     #define  _Rising_Time 0
     const _real _tr[] =  {10, 10, 10, 0, 0, 8, 0, 0, 0, 0, 0, 0};
@@ -292,11 +316,13 @@ int main(int argc, char ** argv){
         int index;
         float sim_time = 0.0;
         for (int i = 0; i < qtd_pontos; ++i) {
+            int index_xref = i*_Nx;
+            int index_uref = i*_n_U;
             for (int j = 0; j < _Nx; ++j) {
-                xref[i*_Nx+j] = state_matrix[k][j+1];
+                xref[index_xref+j] = state_matrix[k][j+1];
             }
             for (unsigned int j = 0; j < _n_U; j++){
-                uref[i*_n_U+j] = u_ref_input[j];
+                uref[index_uref+j] = u_ref_input[j];
             }
             if(sim_time >= state_matrix[k][0]) {
                 if(k < (ref_size-1))
@@ -354,9 +380,9 @@ int main(int argc, char ** argv){
     float v_curr[_n_U];
     float u_ant[_n_U];
 
-    memset(u_curr, (float)0.0, _n_U * sizeof(float));
-    memset(v_curr, (float)0.0, _n_U * sizeof(float));
-    memset(u_ant, (float)0.0, _n_U * sizeof(float));
+    memset_loop<float>(u_curr, (float)0.0, _n_U);
+    memset_loop<float>(v_curr, (float)0.0, _n_U);
+    memset_loop<float>(u_ant, (float)0.0, _n_U);
     
     for (int i = 0; i < _Nx; i++)
         curr_state[i] = initial_state[i];
@@ -368,8 +394,10 @@ int main(int argc, char ** argv){
 
         clock_gettime(CLOCK_ID, &requestStartCycle);
 
+        int index_xref = iter*_Nx;
+        int index_uref = iter*_n_U;
         // qtd_iter = solver->execute(curr_state, u_curr, iter, last_best, &xref[iter*_Nx], &uref[iter], xss, uss, &J_cost);
-        qtd_iter = nonlinear_solver_wrapper(curr_state, u_curr, iter, last_best, &xref[iter*_Nx], &uref[iter*_n_U], xss, uss, new_best, &J_cost);
+        qtd_iter = nonlinear_solver_wrapper(curr_state, u_curr, iter, last_best, &xref[index_xref], &uref[index_uref], xss, uss, new_best, &J_cost);
         
         clock_gettime(CLOCK_ID, &requestEndCycle);
         cycle_time = ( requestEndCycle.tv_sec - requestStartCycle.tv_sec ) + ( requestEndCycle.tv_nsec - requestStartCycle.tv_nsec ) / BILLION;

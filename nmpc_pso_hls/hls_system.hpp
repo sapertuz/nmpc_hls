@@ -128,6 +128,8 @@ public:
 
         //memset(Jui, (const _hw_real)0.0, _n_U*sizeof(_hw_real));
         _hw_real J_tmp1, J_tmp2;
+        memset_loop<_hw_real>(Ji, (_hw_real)0.0, _Nx);
+        memset_loop<_hw_real>(Jui, (_hw_real)0.0, _n_U);
         // Create control guess for full horizon
         // Constructing the vector of guessed control actions with respect to N and Nu
         uu_loop(control_guess, uu_1, uu_2);
@@ -251,7 +253,7 @@ protected:
             current_x_hat = x_hat[j];
             current_x_ref = xref[j];
             _hw_real tmp_err = (controlled_state[j] == 1) ? (current_x_hat - current_x_ref) : (_hw_real)0.0;
-            penality = ((state_lower_limits[j] <= current_x_hat) && (current_x_hat <= state_upper_limits[j])) ? (_hw_real)1.0 : (_hw_real)1e4;
+            penality = ((state_lower_limits[j] <= current_x_hat) && (current_x_hat <= state_upper_limits[j])) ? (_hw_real)Q[j] : (_hw_real)1e4;
 //            Ji_out_local[j] = Ji_local[j] + penality*tmp_err*tmp_err;
             Ji_out[j] = Ji_in[j] + penality*tmp_err*tmp_err;
         }
@@ -273,7 +275,7 @@ protected:
             //_hw_real tmp_err = normalize_angle(x_hat[l] - xref[l]);
             _hw_real current_uu = uu[j];
             _hw_real tmp_err = (current_uu - uss[j]);
-            penality = ((u_min[j] <= current_uu) && (current_uu <= u_max[j])) ? (_hw_real)1.0 : (_hw_real)1e4;
+            penality = ((u_min[j] <= current_uu) && (current_uu <= u_max[j])) ? R[j] : (_hw_real)1e4;
             Ji_out[j] = Ji_in[j] + penality*tmp_err*tmp_err;
         }
     }
@@ -301,21 +303,23 @@ protected:
 
         _hw_real J_local = 0.0;
         _hw_real Ji_mul[_Nx], Jui_mul[_n_U];
-        Ji_mul_loop: for (unsigned j = 0; j < _Nx; j++) {
-#pragma HLS pipeline II=6
-            Ji_mul[j] = Q[j]*(Ji[j]);
-        }
+//         Ji_mul_loop: for (unsigned j = 0; j < _Nx; j++) {
+// #pragma HLS pipeline II=6
+//             Ji_mul[j] = Q[j]*(Ji[j]);
+//         }
         Ji_sum_loop: for (unsigned j = 0; j < _Nx; j++) {
 #pragma HLS pipeline off
-            J_local += Ji_mul[j];
+            // J_local += Ji_mul[j];
+            J_local += Ji[j];
         }
-        Jui_mul_loop: for (unsigned j = 0; j < _n_U; j++) {
-#pragma HLS pipeline II=6
-            Jui_mul[j] = R[j]*(Jui[j]);
-        }
+//         Jui_mul_loop: for (unsigned j = 0; j < _n_U; j++) {
+// #pragma HLS pipeline II=6
+//             Jui_mul[j] = R[j]*(Jui[j]);
+//         }
         Jui_sum_loop: for (unsigned j = 0; j < _n_U; j++) {
 #pragma HLS pipeline off
-            J_local += Jui_mul[j];
+            // J_local += Jui_mul[j];
+            J_local += Jui[j];
         }
         J[0] = J_local;
     }
@@ -361,7 +365,7 @@ protected:
 #pragma HLS bind_storage variable=Jui_buff_ant type=FIFO impl=LUTRAM
 #pragma HLS bind_storage variable=current_uu type=FIFO impl=LUTRAM
 #endif
-        memset(Jui_buff_ant, (const _hw_real)0.0, _n_U*sizeof(_hw_real));
+        memset_loop<_hw_real>(Jui_buff_ant, (const _hw_real)0.0, _n_U);
         for (unsigned i = 0; i < N; ++i) {
         	memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(current_uu, &uu[_n_U*i]);
 			one_step_u_error(Jui_buff, Jui_buff_ant, current_uu);
@@ -397,7 +401,7 @@ protected:
 // #pragma HLS STREAM variable=Ji_buff depth=8
 // //#pragma HLS data_pack variable=Ji_buff
 // #pragma HLS RESOURCE variable=Ji_buff core=FIFO_LUTRAM
-        memset(Ji_buff_ant, (const _hw_real)0.0, _Nx*sizeof(_hw_real));
+        memset_loop<_hw_real>(Ji_buff_ant, (const _hw_real)0.0, _Nx);
         for (unsigned i = 0; i < N; ++i) {
 #pragma HLS PIPELINE off
 //#pragma HLS loop_merge

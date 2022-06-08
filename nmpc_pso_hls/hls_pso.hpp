@@ -259,7 +259,7 @@ int execute(
 
 //#if (n_U > 1)
 //    if((iteration == 0) && (n_U > 1)) {
-	equalizeParticles(x, iteration);
+//	equalizeParticles(x, iteration);
 //    }        
 //#endif
 
@@ -413,7 +413,7 @@ void calculate_du_min(
 void initializeBestLocalFitness(void){
 #pragma HLS inline
 	// Initialize best local fitness 
-	memset(f_ind, (const _hw_real)H_MAX, n_S*sizeof(_hw_real));
+	memset_loop<_hw_real>(f_ind, (const _hw_real)H_MAX, n_S);
 	// for (unsigned int i = 0; i < n_S; ++i) { 
 	// 	f_ind[i] = H_MAX;
 	// }
@@ -614,7 +614,7 @@ void initializeStableZero(
 // stable response after equilibrium is reached
     int idx;
 	_hw_real x_ant[n_U];
-	memset(x_ant, (const _hw_real)0.0, n_U*sizeof(_hw_real));
+	memset_loop<_hw_real>(x_ant, (const _hw_real)0.0, n_U);
    	for (unsigned int k = 0; k < Nu; ++k){
         idx = k*n_U;
 		for (unsigned int i = 0; i < n_U; ++i) {
