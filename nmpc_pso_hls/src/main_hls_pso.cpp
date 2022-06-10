@@ -40,14 +40,15 @@ const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt
     #define _n_S             10
     #define _KPSO            1
     #define _stable_zero     1
-    #define _maxiter         200
+    #define _maxiter         100
     #define _max_v           10
     #define _w0              0.9
-    #define _wf              0.4
-    #define _c1              2.0
+    #define _wf              0.1
+    #define _c1              2.1
     #define _c2              1.0
     #define _threshold       1e-2
     #define _stop_criteria   0
+    #define _slope           (_wf-_w0)/_maxiter
     const _real rand_min = -1.0;
     const _real rand_max = 1.0;
     const int rand_seed[_n_S] = {
@@ -90,8 +91,8 @@ const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt
     float initial_state[] = {0.0, 0.0, 3.1415926536, 0.0};
     // float x_ss[] = {0.4, 0.3, 0.2, 0.1};
 #elif defined(SNIFFBOT_CONFIG)
-    #define _Nh 10
-    #define _Nu 10
+    #define _Nh 50
+    #define _Nu 50
     #define _Nx 12
     #define _n_U 4
     const _real  _Ts = 0.05;
@@ -115,26 +116,26 @@ const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt
     const _real  _state_upper_limits[_Nx] =  {1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3};
     const _real  _state_lower_limits[_Nx] =  {-1e3, -1e3 -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3};
     const _real  _Q[] =  {
-        50, 
-        50, 
-        50, 
-        50, 
-        50, 
-        50, 
+        1, 
+        1, 
+        1, 
+        1, 
+        1, 
+        1, 
         0, 0, 0, 0, 0, 0};
     const _real  _Qf[] =  {
-        200, 
-        200, 
-        200, 
-        200, 
-        200, 
-        200, 
+        10, 
+        10, 
+        10, 
+        10, 
+        10, 
+        10, 
         0, 0, 0, 0, 0, 0};
     const _real  _R[] =  {
-        0.0005, 
-        0.0005, 
-        0.0005, 
-        0.0005
+        0.002, 
+        0.00, 
+        0.00, 
+        0.00
     };
 
     #define  _Rising_Time 0
@@ -170,6 +171,7 @@ void update_xss(int iter, int xss_index);
 void initialize_LastBest(float * last_best);
 void initializeFilteringCoefficients(int number_of_states);
 void add_disturbance(int iter);
+void update_system();
 
 /************************** Variable Definitions *****************************/
 
@@ -230,6 +232,8 @@ _real friction_coefficient;
 ******************************************************************************/
 
 int main(int argc, char ** argv){
+    srand (1654785693);
+
     std::cout << "Start KPSO NMPC" << std::endl;
     twist_ref = 0;
     char *config_file;
@@ -406,7 +410,8 @@ int main(int argc, char ** argv){
         }
 
         for (int i = 0; i < _n_U; ++i) {
-            u_curr[i] = new_best[i*_Nu];
+            // u_curr[i] = new_best[i*_Nu];
+            u_curr[i] = new_best[i];
         }
         
 		// Save Data for Statistics
@@ -458,6 +463,7 @@ int main(int argc, char ** argv){
         std::cout << "\t Control"; print_formatted_float_array(u_curr, _n_U, 2, 6); 
         std::cout << std::endl;
         std::cout << "\t Ji   " << J_cost; 
+        std::cout << "\t Iter   " << qtd_iter; 
         std::cout << std::endl;
 #endif
 
@@ -598,19 +604,15 @@ int nonlinear_solver_wrapper(
     _randCore_t *_hw_rand_core_ptr = &_hw_rand_core;
 
     // Nonlinear PSO Solver
-    const _real slope = (_wf-_w0)/_maxiter;
-    const _real slope_init = 0;
-
     typedef PSO<_real, _randCore_t, _system_t,_n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
     T_solver my_solver(
         _stable_zero,
         _max_v,
         _w0,
         _wf,
-        slope,
+        _slope,
         _c1,
         _c2,
-        slope_init,
         _u_min,
         _u_max,
         _du_max,

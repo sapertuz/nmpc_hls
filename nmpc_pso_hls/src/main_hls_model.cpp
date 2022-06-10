@@ -10,12 +10,12 @@
 typedef half _real;
 //typedef ap_ufixed<16,5, AP_RND_ZERO, AP_WRAP_SM> _real;
 #else
-typedef double _real;
+typedef float _real;
 #endif
 
 #include "aux_functions.hpp"
-#include "hls_inverted_pendulum.hpp"
-#include "hls_sniffbot.hpp"
+#include "config.hpp"
+#include "hls_system.hpp"
 
 #ifdef INVERTED_PENDULUM_CONFIG
     
@@ -24,31 +24,31 @@ typedef double _real;
     #define _Nx     4       // Number of States
     #define _n_U    1       // Number of Inputs
 
-    const double _Ts = 0.1;
-    const double  _u_max[]  = {50.0};
-    const double  _u_min[]  = {-50.0};
-    const double  _du_max[] = {50.0};
-    const double  _uss[] = {0.0};
+    const float _Ts = 0.1;
+    const float  _u_max[]  = {50.0};
+    const float  _u_min[]  = {-50.0};
+    const float  _du_max[] = {50.0};
+    const float  _uss[] = {0.0};
 
     #define _Parametrization 0
-    const double _Lambda = 10;
-    const double _q_param = 10;
-    const double _pmax[] = {1.0};
-    const double _pmin[] = {-1.0};
+    const float _Lambda = 10;
+    const float _q_param = 10;
+    const float _pmax[] = {1.0};
+    const float _pmin[] = {-1.0};
 
     const unsigned short _controlled_state[] = {1, 1, 1, 1};
-    const double _state_upper_limits[] = {0.5, 1e3, 1e3, 1e3} ;
-    const double _state_lower_limits[] = {-0.5, -1e3, -1e3, -1e3} ;
-    const double _Q[] = {1e3, 0.0, 1e-1, 0.0};
-    const double _Qf[] = {1e4, 0.0, 1e-0, 0.0};
-    const double _R[] = {1e-4};
+    const float _state_upper_limits[] = {0.5, 1e3, 1e3, 1e3} ;
+    const float _state_lower_limits[] = {-0.5, -1e3, -1e3, -1e3} ;
+    const float _Q[] = {1e3, 0.0, 1e-1, 0.0};
+    const float _Qf[] = {1e4, 0.0, 1e-0, 0.0};
+    const float _R[] = {1e-4};
 
     #define _Rising_Time 0
-    const double _tr[] =  {0, 0, 0, 0};
-    double initial_state[] = {0.0, 0.0, 3.1415926536, 0.0};
-    // double x_ss[] = {0.4, 0.3, 0.2, 0.1};
-    double u_guess[] = {39, 50};
-    double x_ref[] = {  
+    const float _tr[] =  {0, 0, 0, 0};
+    float initial_state[] = {0.0, 0.0, 3.1415926536, 0.0};
+    // float x_ss[] = {0.4, 0.3, 0.2, 0.1};
+    float u_guess[] = {39, 50};
+    float x_ref[] = {  
         0.0, 0.0, 2.0, 0.0,
         0.0, 0.0, 3.0, 0.0,
         0.0, 0.0, 3.1415926536, 0.0
@@ -59,29 +59,29 @@ typedef double _real;
     #define _Nu 10
     #define _Nx 12
     #define _n_U 4
-    const double  _Ts = 0.05;
-    const double  _u_max[] =  {100, 100, 100, 100};
-    const double  _u_min[] =  {-100, -100, -100, -100};
-    const double  _du_max[] =  {20, 20, 20, 20};
-    const double  _uss[] = {0.0, 0.0, 0.0, 0.0};
+    const float  _Ts = 0.05;
+    const float  _u_max[] =  {100, 100, 100, 100};
+    const float  _u_min[] =  {-100, -100, -100, -100};
+    const float  _du_max[] =  {20, 20, 20, 20};
+    const float  _uss[] = {0.0, 0.0, 0.0, 0.0};
 
     #define  _Parametrization 0
-    const double  _Lambda = 5;
-    const double  _q_param = 2;
-    const double  _pmax[] =  {1, 1, 1, 1};
-    const double  _pmin[] =  {-1, -1, -1, -1};
+    const float  _Lambda = 5;
+    const float  _q_param = 2;
+    const float  _pmax[] =  {1, 1, 1, 1};
+    const float  _pmin[] =  {-1, -1, -1, -1};
 
     const unsigned short _controlled_state[] = {1, 1, 1, 1};
-    const double  _state_upper_limits[] =  {1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3};
-    const double  _state_lower_limits[] =  {-1e3, -1e3 -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3};
-    const double  _Q[] =  {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
-    const double  _Qf[] =  {10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0};
-    const double  _R[] =  {0.02, 0.0, 0.0, 0.0};
+    const float  _state_upper_limits[] =  {1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3};
+    const float  _state_lower_limits[] =  {-1e3, -1e3 -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3};
+    const float  _Q[] =  {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
+    const float  _Qf[] =  {10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0};
+    const float  _R[] =  {0.02, 0.0, 0.0, 0.0};
 
     #define  _Rising_Time 0
-    const double _tr[] =  {10, 10, 10, 0, 0, 8, 0, 0, 0, 0, 0, 0};
-    const double  initial_state[] =  {7.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-    // double u_guess[] = {
+    const float _tr[] =  {10, 10, 10, 0, 0, 8, 0, 0, 0, 0, 0, 0};
+    const float  initial_state[] =  {7.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    // float u_guess[] = {
     // 0.000000e+00,   0.000000e+00,   0.000000e+00, 0.000000e+00, 
 	// -1.746359e-01,  -7.003172e-02,  4.187292e-02, 3.835742e-02, 
 	// 7.178290e-01,   5.726184e-02,   3.145507e-01, 1.726252e-01, 
@@ -94,7 +94,7 @@ typedef double _real;
 	// -1.871749e+00,  -1.185695e+00,  9.825810e-01, 7.133058e+00
     // };
 
-    double u_guess [] = {
+    float u_guess [] = {
     -1.683541e+01,   -1.204010e+01,   -8.516966e+00,   -1.808013e+01 ,
 	1.906993e+00,    -5.580946e+00,   1.148303e+01,    1.919867e+00 ,
 	4.614624e+00,    8.722816e-01,    9.207100e+00,    2.855330e+00 ,
@@ -126,7 +126,7 @@ typedef double _real;
 	6.354776e+00,    -1.565768e+01,   -3.144139e+01,   3.104843e+00 
     };
 
-    double x_ref[] = {  
+    float x_ref[] = {  
     7.078500e+00, 1.000100e+01, 0.000000e+00, 0.000000e+00, 0.000000e+00, 3.141600e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
 	7.078500e+00, 1.000100e+01, 0.000000e+00, 0.000000e+00, 0.000000e+00, 3.141600e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
 	7.157000e+00, 1.000500e+01, 0.000000e+00, 0.000000e+00, 0.000000e+00, 6.283200e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
@@ -141,17 +141,17 @@ typedef double _real;
 
 #endif
 
-#ifdef INVERTED_PENDULUM_CONFIG
-    typedef model_inverted_pendulum<_real> model_t;
-#elif defined(SNIFFBOT_CONFIG)
-    typedef model_sniffbot<_real> model_t;
-#endif
+// #ifdef INVERTED_PENDULUM_CONFIG
+//     typedef model_inverted_pendulum<_real> model_t;
+// #elif defined(SNIFFBOT_CONFIG)
+//     typedef model_sniffbot<_real> model_t;
+// #endif
 
 
 void model_wrapper(
-    double state_dot[_Nx],
-	double state[_Nx],
-	double u_guess[_n_U]
+    float state_dot[_Nx],
+	float state[_Nx],
+	float u_guess[_n_U]
 )
 {
 
@@ -171,37 +171,82 @@ void model_wrapper(
     _real local_state[_Nx];
     _real local_u_guess[_n_U];
 
-    reg_local_st: memcpy_loop_unrolled<_real, double, _Nx>(local_state, (const double *)state);
-    reg_local_u_guess: memcpy_loop_unrolled<_real, double, _n_U>(local_u_guess, (const double *)u_guess);
+    reg_local_st: memcpy_loop_unrolled<_real, float, _Nx>(local_state, (const float *)state);
+    reg_local_u_guess: memcpy_loop_unrolled<_real, float, _n_U>(local_u_guess, (const float *)u_guess);
 
     current_model.model(local_state_dot, local_state, local_u_guess);
 
-    reg_st_dot: memcpy_loop_unrolled<double, _real, _Nx>(state_dot, (const _real *)local_state_dot);
+    reg_st_dot: memcpy_loop_unrolled<float, _real, _Nx>(state_dot, (const _real*)local_state_dot);
     
 }
 
+void one_step_pred_wrapper(
+    float state_dot[_Nx],
+	float state[_Nx],
+	float u_guess[_n_U]
+)
+{
+    typedef System<_real, _Nh, _Nx, _n_U, _Nu> T_system;
+    T_system current_system(
+        _u_max, 
+        _u_min, 
+        _du_max,
+        _controlled_state,
+        _state_upper_limits, 
+        _state_lower_limits, 
+        _Q, 
+        _Qf, 
+        _R, 
+        _uss,
+        _Ts);
+
+    _real local_state_dot[_Nx];
+    _real local_state[_Nx];
+    _real local_u_guess[_n_U];
+
+    reg_local_st: memcpy_loop_unrolled<_real, float, _Nx>(local_state, (const float *)state);
+    reg_local_u_guess: memcpy_loop_unrolled<_real, float, _n_U>(local_u_guess, (const float *)u_guess);
+
+    current_system.one_step_prediction(local_state_dot, local_state, local_u_guess);
+
+    reg_st_dot: memcpy_loop_unrolled<float, _real, _Nx>(state_dot, (const _real*)local_state_dot);
+}
+
 int main(){
-    double state_dt_dot[_Nx];
-    double state_ant[_Nx];
-    double state_dot[_Nx];
-    memcpy_loop_unrolled<double, double, _Nx>(state_ant, (const double *)initial_state);
+    float state_dt_dot[_Nx];
+    float state_ant[_Nx];
+    float state_dot[_Nx];
+
+    float state_rk4_ant[_Nx];
+    float state_rk4_dot[_Nx];
+
+    memcpy_loop_unrolled<float, float, _Nx>(state_ant, (const float *)initial_state);
+    memcpy_loop_unrolled<float, float, _Nx>(state_rk4_ant, (const float *)initial_state);
     int n_steps = sizeof(u_guess)/(sizeof(u_guess[0])*_n_U);
     printf("\n %d \n", n_steps);
     for (unsigned i = 0; i < n_steps; i++)
     {
-        model_wrapper((double *)state_dt_dot, (double *)state_ant, (double *)&u_guess[i*_n_U]);
+        // Normal Prediction
+        model_wrapper((float *)state_dt_dot, (float *)state_ant, (float *)&u_guess[i*_n_U]);
         //std::cout << "state = " << initial_state[0] << " , " << initial_state[1] << " , "  << initial_state[2] << " , "  << initial_state[3] << std::endl;
         for (int j = 0; j < _Nx; j++){
             state_dot[j] = state_dt_dot[j]*_Ts + state_ant[j];
         }
+        // Ruhge Kutta
+        one_step_pred_wrapper((float *)state_rk4_dot, (float *)state_rk4_ant, (float *)&u_guess[i*_n_U]);
+        
         // std::cout << "State dt = \t";
         // print_formatted_float_array(state_dt_dot, _Nx, 4, 7);
         // std::cout << std::endl;
-        std::cout << "State[ " << i <<" ] = \t";
-        print_formatted_float_array<double>(state_dot, _Nx, 4, 7);
+        std::cout << "State Normal[ " << i <<" ] = \t";
+        print_formatted_float_array<float>(state_dot, _Nx, 4, 7);
+        std::cout << std::endl;
+        std::cout << "State RK4[ " << i <<" ] = \t";
+        print_formatted_float_array<float>(state_rk4_dot, _Nx, 4, 7);
         std::cout << std::endl;
         // std::cout << "--------------------------------------------------------------------------------------------"<<std::endl;
-        memcpy_loop_unrolled<double, double, _Nx>(state_ant, (const double *)state_dot);
+        memcpy_loop_unrolled<float, float, _Nx>(state_ant, (const float *)state_dot);
+        memcpy_loop_unrolled<float, float, _Nx>(state_rk4_ant, (const float *)state_rk4_dot);
     }
     
     return 0;

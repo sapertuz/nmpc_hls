@@ -79,7 +79,7 @@ typedef float _real; //typedef double _real;
 #define _maxiter 100
 #define _max_v 10
 #define _w0 0.9
-#define _wf 0.4
+#define _wf 0.1
 #define _c1 2.1
 #define _c2 1.0
 #define _threshold 1e-2

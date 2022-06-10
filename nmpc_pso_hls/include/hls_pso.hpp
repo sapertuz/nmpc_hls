@@ -55,7 +55,6 @@ protected:
 	const _hw_real	c2; // social coefficient
 	
 	_hw_real w;
-	const _hw_real slope_init;
 	
 	_hw_real threshold;
 	int stop_criteria;
@@ -125,7 +124,6 @@ constexpr PSO(
 	const _hw_real 	_slope,
 	const _hw_real 	_c1,
 	const _hw_real 	_c2,
-	const _hw_real  _slope_init,
 	const _hw_real	*_u_min,
 	const _hw_real	*_u_max,
 	const _hw_real	*_du_max,
@@ -145,7 +143,7 @@ constexpr PSO(
 	_system_t *_current_system,
 	_randCore_t *_randGen
 	) : max_v(_max_v), min_v(-_max_v), w0(_w0), wf(_wf), 
-		slope(_slope), c1(_c1), c2(_c2), slope_init((_wf-_w0)/_maxiter),
+		slope(_slope), c1(_c1), c2(_c2),
 		stable_zero(_stable_zero), init_v(_max_v*0.01),
 		u_min(_u_min), u_max(_u_max), du_max(_du_max), uss_local(_uss),
 /*		
@@ -241,7 +239,7 @@ int execute(
 	xss_local = (_hw_real *) malloc(Nx*sizeof(_hw_real));
 #endif
 	memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(u_curr_local, u_curr);
-	memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_curr_local, xss);
+	memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_curr_local, x_curr);
 	memcpy_loop_rolled<_hw_real, _hw_real, _Nx*_Nh>(xref_local, xref);
 	memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(uref_local, uref);
 	memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(xss_local, xss);
@@ -251,7 +249,8 @@ int execute(
 #pragma HLS bind_storage variable=uss_local type=RAM_2P impl=LUTRAM
 #pragma HLS stream variable=uss_local type=shared
 	memcpy_loop_rolled<_hw_real, _hw_real, n_U>(uss_local, uss);
-*/
+*/	
+	w = w0;
 	calculate_du_min();
 
 	initializeConstrains(u_curr_local);
@@ -613,7 +612,7 @@ void initializeStableZero(
 // Starts one particle with all Zeros for 
 // stable response after equilibrium is reached
     int idx;
-	_hw_real x_ant[n_U];
+	_hw_real x_ant[_n_U];
 	memset_loop<_hw_real>(x_ant, (const _hw_real)0.0, n_U);
    	for (unsigned int k = 0; k < Nu; ++k){
         idx = k*n_U;
@@ -751,7 +750,7 @@ void updateParticlesWithDuConstrains(
 	_hw_real v_new = 0.0;
 	_hw_real x_new = 0.0;
 	//memset(x_ant, (const _hw_real)0.0, n_U*sizeof(_hw_real));
-    
+
 	// First Moment of each Particle
 	for (unsigned int i = 0; i < n_S; ++i) {
 #pragma UNROLL
@@ -809,7 +808,52 @@ void updateParticlesWithDuConstrains(
         } // END FOR j
        //} // END IF
     } // END FOR i
+
+/*
+	    // Update Particles
+    for (int i = 0; i < _n_S; ++i) {
+         for (int j = 0; j < _Nu; ++j) {
+    	 	for (int k = 0; k < _n_U; ++k){
+    	 		int idx = k*Nu+j;
+                r1 = rand_real(); //random->read();
+                r2 = rand_real(); //random->read();
+
+	            _hw_real v_ant = _v[i][idx];
+	            v_tmp = w*v_ant + c1*r1*(_y[i][idx]-_x[i][idx]) + c2*r2*(global_min[idx] - _x[i][idx]);
+	            if (std::abs(v_tmp) > max_v) {
+	                if (v_tmp > 0)
+	                    v_tmp = max_v;
+	                else
+	                    v_tmp= -max_v;
+	            }
+				_v[i][idx] = v_tmp;
+	            _x[i][idx] = _x[i][idx] + _v[i][idx];
+                
+	            if (j==0) {
+	                if (_x[i][idx] > x_max_first[k]) {
+	                    _x[i][idx] = x_max_first[k];
+	                }
+	                else if (_x[i][idx] < x_min_first[k]) {
+	                    _x[i][idx] = x_min_first[k];
+	                }
+	            }
+	            else {
+	                if (std::abs(_x[i][idx]-_x[i][idx-1]) > du_max[k]) {
+	                    if ((_x[i][idx]-_x[i][idx-1]) > 0)
+	                        _x[i][idx] = _x[i][idx-1] + du_max[k];
+	                    else
+	                        _x[i][idx] = _x[i][idx-1] - du_max[k];
+	                }
+                }
+                _x[i][idx] = verifyControlConstrains(_x[i][idx], k);
+	            
+            } // END FOR k
+        } // END FOR j
+    } // END FOR i
+*/
 }
+
+	
 };
 
 #endif

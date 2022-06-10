@@ -4,3 +4,4 @@ test
 test.dSYM
 vitis_hls_ws/*
 !vitis_hls_ws/*.tcl
+build/*

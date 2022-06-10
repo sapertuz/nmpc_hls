@@ -152,9 +152,6 @@ private:
 		_real v[_S][_Nu*_n_U]
 	);
 
-	void memcpy_loop_rolled(_real *dest, _real *src, unsigned n);
-	void memset_loop(_real *array, const _real data, unsigned n);
-
 };
 
 #endif

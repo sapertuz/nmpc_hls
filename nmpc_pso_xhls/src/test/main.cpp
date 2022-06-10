@@ -9,7 +9,8 @@
 using namespace std;
 
 int main(int argc, char ** argv) {
-	
+	srand (1654785693);
+
 	char * config_file;
 	Project * projeto;
 

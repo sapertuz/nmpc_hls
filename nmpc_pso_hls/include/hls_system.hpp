@@ -131,12 +131,13 @@ public:
         memset_loop<_hw_real>(Ji, (_hw_real)0.0, _Nx);
         memset_loop<_hw_real>(Jui, (_hw_real)0.0, _n_U);
         // Create control guess for full horizon
+        
         // Constructing the vector of guessed control actions with respect to N and Nu
         uu_loop(control_guess, uu_1, uu_2);
         // Control Error
         horizon_u_error(uu_1, Jui);
         // Predict Horizon
-        horizon_step_prediction(current_state, uu_2, x_horizon);
+        horizon_step_prediction(current_state, uu_1, x_horizon);
         // State Error
         horizon_step_error(x_horizon, xref, Ji, final_x, final_xref);
 
@@ -164,10 +165,10 @@ public:
 
 #pragma HLS ALLOCATION function instances=model limit=1
 
-    _hw_real local_control[_n_U];
-    _hw_real local_state[_Nx];
-    _hw_real k1[_Nx], k2[_Nx], k3[_Nx], k4[_Nx];
-    _hw_real state_temp[_Nx];
+        _hw_real local_control[_n_U];
+        _hw_real local_state[_Nx];
+        _hw_real k1[_Nx], k2[_Nx], k3[_Nx], k4[_Nx];
+        _hw_real state_temp[_Nx];
 
 #pragma HLS STREAM variable=local_state depth=_Nx*2 type=shared
 #pragma HLS STREAM variable=local_control depth=_Nx*2 type=shared
@@ -485,24 +486,18 @@ protected:
         _hw_real *uu_2
         ){
 // #pragma HLS inline
-        unsigned k_cg = 0;
-        unsigned k_u = 0;
-        const unsigned k_cg_last = _n_U*_Nu - _n_U;
-        _hw_real last_control_guess[_n_U];
-        for (unsigned i = 0; i < _n_U*_Nh; ++i) {
-            _hw_real control_val;
-            if(i < _n_U*_Nu){
-                control_val = control_guess[i];
-                if (i >= k_cg_last){
-                    last_control_guess[k_cg] = control_val;
-                    k_cg++;
+        _real control_val;
+        for (int i = 0; i < _Nh; ++i) {
+            for (int j = 0; j < _n_U; ++j) {
+                if(i < _Nu) {
+                    control_val = control_guess[j*_Nu+i];
                 }
-            }else{
-                control_val = last_control_guess[k_u];
-                k_u = (k_u<_n_U) ? k_u+1 : 0;
+                else {
+                    control_val = control_guess[j*_Nu-1];	
+                }
+                uu_1[i*_n_U+j] =  control_val;
+                uu_2[i*_n_U+j] =  control_val;
             }
-            uu_1[i] = control_val;
-            uu_2[i] = control_val;
         }
     }
 

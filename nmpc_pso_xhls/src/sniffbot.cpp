@@ -223,75 +223,75 @@ void Sniffbot::model(
 
 }
 
-_real Sniffbot::nmpc_cost_function(_real * control_guess, _real * xref, _real * uref, _real * xss, _real * uss){
+// _real Sniffbot::nmpc_cost_function(_real * control_guess, _real * xref, _real * uref, _real * xss, _real * uss){
 	
-	_real J = 0.0;
-    _real Ji[] = {0,0,0,0,0,0,0,0,0,0,0,0};
-	_real Jf = 0.0;
-    _real Ju = 0.0;
-    //_real temp;
+// 	_real J = 0.0;
+//     _real Ji[] = {0,0,0,0,0,0,0,0,0,0,0,0};
+// 	_real Jf = 0.0;
+//     _real Ju = 0.0;
+//     //_real temp;
 
-	// Constructing the vector of guessed control actions with respect to N and Nu
-	for (int i = 0; i < N; ++i) {
-		for (int j = 0; j < _n_U; ++j) {
-			if(i < Nu) {
-				uu[i*_n_U+j] = control_guess[j*Nu+i];
-			}
-			else {
-				uu[i*_n_U+j] = control_guess[j*Nu-1];	
-			}
-		}
-	}
+// 	// Constructing the vector of guessed control actions with respect to N and Nu
+// 	for (int i = 0; i < N; ++i) {
+// 		for (int j = 0; j < _n_U; ++j) {
+// 			if(i < Nu) {
+// 				uu[i*_n_U+j] = control_guess[j*Nu+i];
+// 			}
+// 			else {
+// 				uu[i*_n_U+j] = control_guess[j*Nu-1];	
+// 			}
+// 		}
+// 	}
     
-	// Initialize x_hat vector
-	for (int i = 0; i < _Nx; ++i) {
-		x_hat[i] = current_state[i];
-	}
-	for (int i = _Nx; i < (_Nx*N); ++i) {
-		x_hat[i] = 0.0;
-	}
+// 	// Initialize x_hat vector
+// 	for (int i = 0; i < _Nx; ++i) {
+// 		x_hat[i] = current_state[i];
+// 	}
+// 	for (int i = _Nx; i < (_Nx*N); ++i) {
+// 		x_hat[i] = 0.0;
+// 	}
 
-	// Calculate cost function
-	int k = 0;
-	int l = 0;
-    J = 0;
-    Jf = 0;
-    Ju = 0;
-    // Cost of States
-	for (int i = 0; i < N; ++i) {
-		k = _Nx*(i+1);
-        one_step_prediction(&x_hat[k], &x_hat[_Nx*i], &uu[_n_U*i]);
-		for (int j = 0; j < _Nx; j=j+2) {
-			l = k + j;
-            _real tmp_err = error_with_constrains(j,x_hat[_Nx*i+j])*( x_hat[_Nx*i+j] - xref[_Nx*i+j]);
-            Ji[j] = Ji[j] + tmp_err*tmp_err;
-		}
-	}
-    for (int j = 0; j < _Nx; j=j+2) {
-        J = J + Q[j]*sqrt(Ji[j]);
-    }
+// 	// Calculate cost function
+// 	int k = 0;
+// 	int l = 0;
+//     J = 0;
+//     Jf = 0;
+//     Ju = 0;
+//     // Cost of States
+// 	for (int i = 0; i < N; ++i) {
+// 		k = _Nx*(i+1);
+//         one_step_prediction(&x_hat[k], &x_hat[_Nx*i], &uu[_n_U*i]);
+// 		for (int j = 0; j < _Nx; j=j+2) {
+// 			l = k + j;
+//             _real tmp_err = error_with_constrains(j,x_hat[_Nx*i+j])*( x_hat[_Nx*i+j] - xref[_Nx*i+j]);
+//             Ji[j] = Ji[j] + tmp_err*tmp_err;
+// 		}
+// 	}
+//     for (int j = 0; j < _Nx; j=j+2) {
+//         J = J + Q[j]*sqrt(Ji[j]);
+//     }
 
-    // Cost of States - End of Horizon
-    k = _Nx*N;
-    for (int j = 0; j < _Nx; j++) {
-        l = k + j;
-        _real tmp_err = error_with_constrains(j,x_hat[l])*( x_hat[l] - xss[j]);
-        Jf = Jf + tmp_err*tmp_err;
-    }   
-    J = J + Qf[0]*sqrt(Jf); 
+//     // Cost of States - End of Horizon
+//     k = _Nx*N;
+//     for (int j = 0; j < _Nx; j++) {
+//         l = k + j;
+//         _real tmp_err = error_with_constrains(j,x_hat[l])*( x_hat[l] - xss[j]);
+//         Jf = Jf + tmp_err*tmp_err;
+//     }   
+//     J = J + Qf[0]*sqrt(Jf); 
 
-    // Cost of control
-    if(R[0] > 0) {
-        for (int i = 0; i < N; ++i) {
-            for (int j = 0; j < _n_U; ++j) {
-                _real tmp_err = uu[_n_U*i+j]-uss[j];
-                Ju = Ju + tmp_err*tmp_err;
-            }
-        }
-    }
+//     // Cost of control
+//     if(R[0] > 0) {
+//         for (int i = 0; i < N; ++i) {
+//             for (int j = 0; j < _n_U; ++j) {
+//                 _real tmp_err = uu[_n_U*i+j]-uss[j];
+//                 Ju = Ju + tmp_err*tmp_err;
+//             }
+//         }
+//     }
 
-	return J;
-}
+// 	return J;
+// }
 
 
 

@@ -317,17 +317,18 @@ void Simulation::execute(){
 
 #ifdef PRINT_TO_TERMINAL        
         // Print Iteration Output
-        std::cout << "Sim iter: " << std::right << std::setw(2) << iter << " | Solv iter: " << qtd_iter;
+        std::cout << "Sim : " << std::right << std::setw(2) << iter << " | Solv : " << qtd_iter;
+        std::cout << " | u :\t";
         for (int i = 0; i < _n_U; ++i)
         {
             // printf(" | u[%d]: %.2f\t", i, u_curr[i]);
-        	std::cout << " | u[" << i << "]: "<< std::fixed << std::setprecision(2) << std::right << std::setw(6) << u_curr[i] << "\t";
+        	std::cout << std::fixed << std::setprecision(2) << std::right << std::setw(6) << u_curr[i] << "\t";
         } 
-        std::cout << "\tJ: " << std::fixed << std::setprecision(2) << std::right << std::setw(6) << J_cost << " | "; 
+        std::cout << "| J: " << std::fixed << std::setprecision(2) << std::right << std::setw(6) << J_cost << " | "; 
         for (int i = 0; i < _Nx; i++)
             std::cout << std::right << std::setw(8) << std::fixed << std::setprecision(2) << next_state[i] << " ";
 
-        std::cout << std::endl;
+        std::cout << "|" << std::endl;
 #endif
 
 

@@ -14,4 +14,8 @@ _real normalize_angle(_real angle);
 void print_state_of_cost_function(_real * state, _real * xref, _real * xss, _real * control, int N, int Nx);
 _real maximum(_real a, _real b);
 
+void memcpy_loop_rolled(_real *dest, _real *src, unsigned n);
+void memset_loop(_real *array, const _real data, unsigned n);
+void split (volatile _real *in, _real *out1, _real *out2, unsigned n);
+
 #endif

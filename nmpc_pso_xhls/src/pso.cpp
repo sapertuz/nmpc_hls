@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "pso.hpp"
+#include "aux_functions.hpp"
 
 // DEBUG
 int itr;
@@ -275,7 +276,7 @@ void PSO::initializeStableZero(
 
     int idx;
 	_real x_ant[_n_U];
-	memset_loop(x_ant, (const _real)0.0, Nc);
+	memset_loop(x_ant, (const _real)0.0, _n_U);
    	for (unsigned int k = 0; k < Nu; ++k){
         idx = k*Nc;
 		for (unsigned int i = 0; i < Nc; ++i) {
@@ -307,21 +308,40 @@ void PSO::evaluateFitnessAndDetectLocalBest(
     _real xss[], 
     _real uss[]
 ) {
-	// Evaluates fitness and local detection
-    for(int i = 0; i < S; i++) {
+	// // Evaluates fitness and local detection
+    // for(int i = 0; i < S; i++) {
+    //     // std::cout << std::endl;
+    //     if(valid_particle[i] == 1){
+    //         // std::cout << x[i][0] << " " << x[i][1] << " " << x[i][2] << " " << x[i][3];
+    //         fx[i] = controled_system->nmpc_cost_function(&x[i][0], xref, uref, xss, uss);
+    //         if (fx[i] < f_ind[i]) {
+    //             for (int j = 0; j < Nu*Nc; ++j) {
+    //             	y[i][j] = x[i][j];
+    //             }
+    //             f_ind[i] = fx[i];           
+    //         }
+    //     }
+    // }
+    // // std::cout << std::endl;
+
+    // Evaluates fitness and local detection
+    loop_1: for(unsigned int i = 0; i < S; i++) {
         // std::cout << std::endl;
-        if(valid_particle[i] == 1){
+        //if(valid_particle[i] == 1){
             // std::cout << x[i][0] << " " << x[i][1] << " " << x[i][2] << " " << x[i][3];
-            fx[i] = controled_system->nmpc_cost_function(&x[i][0], xref, uref, xss, uss);
+            // fx[i] = rand_real(); 
+			fx[i] = controled_system->nmpc_cost_function(&x[i][0], xref, uref, xss, uss);
             if (fx[i] < f_ind[i]) {
-                for (int j = 0; j < Nu*Nc; ++j) {
-                	y[i][j] = x[i][j];
-                }
+				memcpy_loop_rolled(&y[i][0], &x[i][0], _Nu*_n_U);
+                // loop_2: for (unsigned int j = 0; j < _Nu*n_U; ++j) {
+                // 	_y[i][j] = _x[i][j];
+                // }
                 f_ind[i] = fx[i];           
             }
-        }
+        //}
     }
     // std::cout << std::endl;
+
 }
 
 void PSO::detectInvalidParticles(
@@ -402,6 +422,7 @@ void PSO::updateParticlesWithDuConstrains(
     _real y[][_Nuu*_Nc], 
     _real v[][_Nuu*_Nc]
 ){
+
     _real r1, r2;
     
     // Update Particles
@@ -541,17 +562,4 @@ _real PSO::min_array(_real array[], int * pos) {
 	}
 	*pos = pos_temp;
 	return min;
-}
-
-void PSO::memcpy_loop_rolled(_real *dest, _real *src, unsigned n){
-    for (unsigned short i=0; i<n; i++){
-        dest[i] = src[i];
-    }
-}
-
-void PSO::memset_loop(_real *array, const _real data, unsigned n){
-    // Copy contents of src[] to dest[]
-    for (unsigned short i=0; i<n; i++){
-        array[i] = data;
-    }
 }

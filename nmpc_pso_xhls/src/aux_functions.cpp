@@ -124,3 +124,24 @@ _real maximum(_real a, _real b){
     else
         return b;
 }
+
+void memcpy_loop_rolled(_real *dest, _real *src, unsigned n){
+    for (unsigned short i=0; i<n; i++){
+        dest[i] = src[i];
+    }
+}
+
+void memset_loop(_real *array, const _real data, unsigned n){
+    // Copy contents of src[] to dest[]
+    for (unsigned short i=0; i<n; i++){
+        array[i] = data;
+    }
+}
+
+void split (volatile _real *in, _real *out1, _real *out2, unsigned n){
+    split:for(int i=0; i<n; i++) {
+        _real a = in[i];
+        out1[i] = a;
+        out2[i] = a;
+    }
+}
