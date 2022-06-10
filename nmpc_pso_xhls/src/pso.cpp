@@ -276,7 +276,7 @@ void PSO::initializeStableZero(
 
     int idx;
 	_real x_ant[_n_U];
-	memset_loop(x_ant, (const _real)0.0, _n_U);
+	memset_loop(x_ant, (const _real)0.0, Nc);
    	for (unsigned int k = 0; k < Nu; ++k){
         idx = k*Nc;
 		for (unsigned int i = 0; i < Nc; ++i) {

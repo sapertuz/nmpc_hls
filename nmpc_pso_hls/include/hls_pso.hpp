@@ -144,7 +144,7 @@ constexpr PSO(
 	_randCore_t *_randGen
 	) : max_v(_max_v), min_v(-_max_v), w0(_w0), wf(_wf), 
 		slope(_slope), c1(_c1), c2(_c2),
-		stable_zero(_stable_zero), init_v(_max_v*0.01),
+		stable_zero(_stable_zero), init_v(_max_v*0.1),
 		u_min(_u_min), u_max(_u_max), du_max(_du_max), uss_local(_uss),
 /*		
 		Ts(_Ts), controlled_state(_controlled_state), 
@@ -525,18 +525,19 @@ void initializeParticlesWithDuConstrains(
 #pragma HLS ALLOCATION instances=hsub limit=1 operation
 
 	_hw_real x_ant[n_U];
-	memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(x_ant, u_curr);
 
 	for (unsigned int i = 0; i < n_S; ++i) {
+		memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(x_ant, u_curr);
 #pragma UNROLL
 		for (unsigned int j = 0; j < Nu; ++j) {
-			int idx = j*n_U;
 			for (unsigned int k = 0; k < n_U; ++k) {
 #pragma HLS pipeline II=11 rewind
+				int idx = j*n_U + k;
 				_hw_real rand_tmp = rand_real();
-		        _hw_real x_tmp = (x_ant[k] + (-du_max[k])) + ((_hw_real)2.0*du_max[k]) * rand_tmp; //random->read(); 
-				_x[i][idx] = verifyControlConstrains(x_tmp, k);
-                _y[i][idx] = uss_local[k];
+		        _hw_real x_tmp = ( x_ant[k] + (-du_max[k]) ) + ((_hw_real)2.0*du_max[k]) * rand_tmp; //random->read(); 
+				x_tmp = verifyControlConstrains(x_tmp, k);
+                _x[i][idx] = x_tmp;
+				_y[i][idx] = x_tmp;//uss_local[k];
 		        _v[i][idx] = init_v;
                 valid_particle[i] = 1;
 				x_ant[k] = x_tmp;
@@ -562,8 +563,8 @@ void initializeParticles(
 	for (unsigned int i = 0; i < n_S; ++i) {
 #pragma UNROLL
 		for (unsigned int j = 0; j < Nu; ++j) {
-			int idx = j*n_U;
 			for (unsigned int k = 0; k < n_U; ++k) {
+				int idx = j*n_U + k;
 				_hw_real rand_tmp = rand_real();
 				_hw_real x_tmp = (j == 0)? 
 					u_min[k] + (u_max[k]-u_min[k]) * rand_tmp: //random->read();
@@ -613,17 +614,18 @@ void initializeStableZero(
 // stable response after equilibrium is reached
     int idx;
 	_hw_real x_ant[_n_U];
-	memset_loop<_hw_real>(x_ant, (const _hw_real)0.0, n_U);
+	memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(x_ant, (volatile _hw_real*)u_curr);
    	for (unsigned int k = 0; k < Nu; ++k){
-        idx = k*n_U;
-		for (unsigned int i = 0; i < n_U; ++i) {
-            _hw_real x_tmp = uss_local[i];
-			_hw_real comp_tmp = (k == 0) ? x_tmp - u_curr[i] : x_tmp - x_ant[i];
-
+        for (unsigned int i = 0; i < n_U; ++i) {
+        	idx = k*n_U + i;
+		    _hw_real x_tmp = uss_local[i];
+			// _hw_real comp_tmp = (k == 0) ? x_tmp - u_curr[i] : x_tmp - x_ant[i];
+			_hw_real comp_tmp = x_tmp - x_ant[i] ;
+			
 			x_tmp = (comp_tmp > du_max[i]) ? du_max[i] : x_tmp;
 			x_tmp = (comp_tmp < du_min[i]) ? du_min[i] : x_tmp;
 
-            _x[index][idx] = verifyControlConstrains(x_tmp, i); 
+            _x[index][idx] = verifyControlConstrains(x_tmp, i);
 			x_ant[i] = x_tmp;
 			idx++;
         }
@@ -743,31 +745,32 @@ void updateParticlesWithDuConstrains(
 
 #pragma HLS ALLOCATION instances=rand_real limit=1 function
 
-    _hw_real r1, r2;
+    // _hw_real r1, r2;
 	_hw_real x_ant[n_U];
-	_hw_real v_tmp = 0.0;
-	_hw_real x_tmp = 0.0;
-	_hw_real v_new = 0.0;
-	_hw_real x_new = 0.0;
+	// _hw_real v_tmp = 0.0;
+	// _hw_real x_tmp = 0.0;
+	// _hw_real v_new = 0.0;
+	// _hw_real x_new = 0.0;
 	//memset(x_ant, (const _hw_real)0.0, n_U*sizeof(_hw_real));
 
 	// First Moment of each Particle
 	for (unsigned int i = 0; i < n_S; ++i) {
 #pragma UNROLL
 		for (unsigned int k = 0; k < n_U; ++k){
-			int idx = k*Nu;
-			r1 = rand_real(); //random->read();
-			r2 = rand_real(); //random->read();
+			// int idx = k*Nu;
+			int idx = k;
+			_hw_real r1 = rand_real(); //random->read();
+			_hw_real r2 = rand_real(); //random->read();
 
-			v_tmp = _v[i][idx];
-			x_tmp = _x[i][idx];
+			_hw_real v_tmp = _v[i][idx];
+			_hw_real x_tmp = _x[i][idx];
 			// v = w*v + c1*r1*(y-x) + c2*r2*(global_min - x)
-			v_new = w*v_tmp + c1*r1*(_y[i][idx]-x_tmp) + c2*r2*(global_min[idx] - x_tmp);
+			_hw_real v_new = w*v_tmp + c1*r1*(_y[i][idx] - x_tmp ) + c2*r2*(global_min[idx] - x_tmp);
 			v_new = (v_new > max_v) ? max_v : v_new;
 			v_new = (v_new < min_v) ? min_v : v_new;
 			_v[i][idx] = v_new;
 			
-			x_new = x_tmp + v_new;
+			_hw_real x_new = x_tmp + v_new;
 			x_new = (x_new > x_max_first[k]) ? x_max_first[k] : x_new;
 			x_new = (x_new < x_min_first[k]) ? x_min_first[k] : x_new;
 			_x[i][idx] = verifyControlConstrains(x_new, k);
@@ -784,9 +787,10 @@ void updateParticlesWithDuConstrains(
         //if(valid_particle[i] == 1){
     	 for (unsigned int j = 1; j < Nu; ++j) {
     	 	for (unsigned int k = 0; k < n_U; ++k){
-    	 		int idx = k*Nu+j;
-                r1 = rand_real(); //random->read();
-                r2 = rand_real(); //random->read();
+    	 		// int idx = k*Nu+j;
+				int idx = j*n_U+k;
+                _hw_real r1 = rand_real(); //random->read();
+                _hw_real r2 = rand_real(); //random->read();
 
 	            _hw_real v_tmp = _v[i][idx];
 	            _hw_real x_tmp = _x[i][idx];
@@ -797,7 +801,7 @@ void updateParticlesWithDuConstrains(
 				_v[i][idx] = v_new;
 	            
 				_hw_real x_new = x_tmp + v_new;
-				_hw_real x_tmp2 = x_tmp - x_ant[k]; //x[i][idx]-x[i][idx-1];
+				_hw_real x_tmp2 = x_new - x_ant[k]; //x[i][idx]-x[i][idx-1];
 				x_new = (x_tmp2 > du_max[k]) ? x_ant[k] + du_max[k] : x_new;
 				x_new = (x_tmp2 < du_min[k]) ? x_ant[k] - du_max[k] : x_new;
                 _x[i][idx] = verifyControlConstrains(x_new, k);

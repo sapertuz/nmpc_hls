@@ -41,7 +41,7 @@ const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt
     #define _KPSO            1
     #define _stable_zero     1
     #define _maxiter         100
-    #define _max_v           10
+    #define _max_v           30
     #define _w0              0.9
     #define _wf              0.1
     #define _c1              2.1
