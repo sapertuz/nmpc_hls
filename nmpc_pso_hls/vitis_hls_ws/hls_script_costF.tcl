@@ -3,21 +3,33 @@
 ## Please DO NOT edit it.
 ## Copyright 1986-2021 Xilinx, Inc. All Rights Reserved.
 ############################################################
-set ip_path "/home/chello/Documents/Vivado_WS/vitis_ip_repo"
+set prj_name nmpc_hls_costF
+set prj_top cost_function_wrapper
 
-open_project nmpc_hls_costF
-set_top cost_function_wrapper
-add_files ../main_hls_system.cpp -cflags "-DSNIFFBOT_CONFIG -std=c++11"
-add_files ../hls_system.hpp
-add_files ../hls_sniffbot.hpp
-add_files ../hls_inverted_pendulum.hpp
-add_files ../fast_sin_cos.hpp
-add_files ../aux_functions.hpp
-add_files -tb ../main_hls_system.cpp -cflags "-DDEBUG_SYSTEM -DSNIFFBOT_CONFIG -std=c++11 -Wno-unknown-pragmas" -csimflags "-Wno-unknown-pragmas"
+set ip_path "/home/chello/Documents/Vivado_WS/vitis_ip_repo"
+set workspace [pwd]
+set workspace [file dirname $workspace]
+
+set src_path ${workspace}/src
+set incl_path ${workspace}/include
+set main_name "main_hls_system" 
+
+set c_flags "-DSNIFFBOT_CONFIG -I${incl_path} -std=c++11 -Wno-unknown-pragmas"
+set csim_tb_flags "-DSNIFFBOT_CONFIG -I${incl_path} -std=c++11 -DDEBUG_SYSTEM -Wno-unknown-pragmas"
+
+open_project $prj_name
+set_top $prj_top
+
+add_files $src_path/$main_name.cpp -cflags $c_flags -csimflags $csim_tb_flags
+foreach file [glob -dir $incl_path *.hpp] {
+    add_files $file
+}
+
+add_files -tb ${src_path}/${main_name}.cpp -cflags $csim_tb_flags -csimflags $csim_tb_flags
 
 open_solution "solution_system" -flow_target vivado
 
-set_part {xc7z020-clg400-1}
+set_part {xczu3eg-sbva484-1-i}
 create_clock -period 10 -name default
 config_compile -pipeline_loops 6
 config_interface -m_axi_addr64=0
@@ -26,6 +38,6 @@ config_export -display_name sniffbot_costF -format ip_catalog -output $ip_path/s
 config_core DSP48 -latency 4
 
 csim_design -clean -O -profile
-csynth_design
+# csynth_design
 # cosim_design -O -rtl vhdl
-export_design -format ip_catalog
+# export_design -format ip_catalog

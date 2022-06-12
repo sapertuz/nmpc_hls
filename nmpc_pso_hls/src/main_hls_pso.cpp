@@ -40,7 +40,7 @@ const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt
     #define _n_S             10
     #define _KPSO            1
     #define _stable_zero     1
-    #define _maxiter         100
+    #define _maxiter         200
     #define _max_v           30
     #define _w0              0.9
     #define _wf              0.1
@@ -132,10 +132,10 @@ const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt
         10, 
         0, 0, 0, 0, 0, 0};
     const _real  _R[] =  {
-        0.002, 
-        0.00, 
-        0.00, 
-        0.00
+        0.0005, 
+        0.0005, 
+        0.0005, 
+        0.0005
     };
 
     #define  _Rising_Time 0

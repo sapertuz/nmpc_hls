@@ -87,6 +87,125 @@ public:
         state_upper_limits(_state_upper_limits), state_lower_limits(_state_lower_limits),
         Q(_Q), Qf(_Qf), R(_R)
     {};
+
+// ---------------------------------------------------
+	void nmpc_cost_function_lowflow(
+        volatile _hw_real *current_state,
+        volatile _hw_real *control_guess,
+        volatile _hw_real *xref,
+
+        volatile _hw_real *Jui_in,
+        volatile _hw_real *Ji_in,
+        
+        _hw_real *next_state,
+        _hw_real *Jui_out,
+        _hw_real *Ji_out
+    ){
+#pragma HLS DATAFLOW
+
+#pragma HLS interface mode=ap_fifo port=current_state   depth=_Nx
+#pragma HLS interface mode=ap_fifo port=control_guess   depth=_n_U
+#pragma HLS interface mode=ap_fifo port=xref            depth=_Nx
+
+#pragma HLS interface mode=ap_fifo port=Jui_in          depth=_n_U
+#pragma HLS interface mode=ap_fifo port=Ji_in           depth=_Nx
+
+#pragma HLS interface mode=ap_fifo port=next_state      depth=_Nx
+#pragma HLS interface mode=ap_fifo port=Ji_out          depth=_Nx
+#pragma HLS interface mode=ap_fifo port=Jui_out         depth=_n_U
+
+    _hw_real uu_1[_n_U], uu_2[_n_U];       
+#pragma HLS stream          variable=uu_1   type=fifo depth=_n_U
+#pragma HLS stream          variable=uu_2   type=fifo depth=_n_U
+#pragma HLS bind_storage    variable=uu_1   type=FIFO impl=LUTRAM
+#pragma HLS bind_storage    variable=uu_2   type=FIFO impl=LUTRAM
+    _hw_real local_next_state[_Nx], xx_1[_Nx];
+#pragma HLS stream          variable=local_next_state   type=fifo depth=_n_U
+#pragma HLS stream          variable=xx_1               type=fifo depth=_n_U
+#pragma HLS bind_storage    variable=local_next_state   type=FIFO impl=LUTRAM
+#pragma HLS bind_storage    variable=xx_1               type=FIFO impl=LUTRAM
+
+    // Create control guess for full horizon
+    // Constructing the vector of guessed control actions with respect to N and Nu
+    split<_hw_real, _hw_real, _n_U>(control_guess, uu_1, uu_2);
+    // Control Error
+    one_step_u_error(Jui_out, Jui_in, uu_1);
+    // Predict Horizon
+    one_step_prediction(local_next_state, current_state, uu_2);
+    split<_hw_real, _hw_real, _Nx>(local_next_state, xx_1, next_state);
+    // State Error
+    one_step_error(Ji_out, Ji_in, xx_1, xref);
+}
+// ---------------------------------------------------
+	void nmpc_cost_function_topflow(
+        volatile _hw_real *current_state,
+        volatile _hw_real *control_guess,
+        volatile _hw_real *xref,
+        _hw_real *J
+    ){
+#pragma HLS DATAFLOW
+
+#pragma HLS interface mode=ap_fifo port=current_state   depth=_Nx*2
+#pragma HLS interface mode=ap_fifo port=control_guess   depth=_Nx*2
+#pragma HLS interface mode=ap_fifo port=xref            depth=_Nx*2
+
+    _hw_real Ji_in[_Nx], Ji_out[_Nx]; // = 0.0;
+#pragma HLS STREAM variable=Ji_in depth=_Nx
+#pragma HLS STREAM variable=Ji_out depth=_Nx
+#pragma HLS bind_storage variable=Ji_in type=FIFO impl=LUTRAM
+#pragma HLS bind_storage variable=Ji_out type=FIFO impl=LUTRAM
+
+    _hw_real Jui_in[_n_U], Jui_out[_n_U]; // = 0.0;
+#pragma HLS STREAM variable=Jui_in depth=_n_U
+#pragma HLS STREAM variable=Jui_out depth=_n_U
+#pragma HLS bind_storage variable=Jui_in type=FIFO impl=LUTRAM
+#pragma HLS bind_storage variable=Jui_out type=FIFO impl=LUTRAM
+
+    _hw_real x_current[_Nx], x_next[_Nx], x_ref[_Nx];
+#pragma HLS STREAM variable=x_current depth=_Nx
+#pragma HLS STREAM variable=x_next depth=_Nx
+#pragma HLS STREAM variable=x_ref depth=_Nx
+#pragma HLS bind_storage variable=x_current type=FIFO impl=LUTRAM
+#pragma HLS bind_storage variable=x_next type=FIFO impl=LUTRAM
+#pragma HLS bind_storage variable=x_ref type=FIFO impl=LUTRAM
+
+    _hw_real J_tmp1, J_tmp2;
+    // memset_loop<_hw_real>(Ji, (_hw_real)0.0, _Nx);
+    // memset_loop<_hw_real>(Jui, (_hw_real)0.0, _n_U);
+
+    unsigned k_xref = 0;
+    unsigned k_u = 0;
+    const unsigned k_cg_last = _n_U*_Nu - _n_U;
+    memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_current, current_state);
+    memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_ref, &xref[k_xref]);
+    memset_loop<_hw_real>(Jui_in, (const _hw_real)0.0, _n_U);
+    memset_loop<_hw_real>(Ji_in, (const _hw_real)0.0, _Nx);
+    for (unsigned i = 0; i < _Nh; ++i) {
+        nmpc_cost_function_lowflow(
+            x_current, 
+            &control_guess[k_u], 
+            x_ref, 
+            Jui_in, 
+            Ji_in, 
+            x_next,
+            Jui_out, 
+            Ji_out
+        );
+        k_xref = i*_Nx;
+        k_u = (k_u == k_cg_last)? k_cg_last : i*_n_U;
+        memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_ref, &xref[k_xref]);
+        memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_current, x_next);
+    }
+    // Weigthed Errors
+    Ji_error(Ji_out, Jui_out, &J_tmp1);
+    Jf_error(x_current, x_ref, &J_tmp2);
+#ifdef DEBUG_SYSTEM
+    std::cout << "Ji = " << J_tmp1 << std::endl;
+    std::cout << "Jf = " << J_tmp2 << std::endl;
+#endif
+    final_sum(J, J_tmp1, J_tmp2);
+    // return J;
+}
 // ---------------------------------------------------
 	void nmpc_cost_function(
         volatile _hw_real *current_state,
@@ -128,16 +247,16 @@ public:
 
         //memset(Jui, (const _hw_real)0.0, _n_U*sizeof(_hw_real));
         _hw_real J_tmp1, J_tmp2;
-        memset_loop<_hw_real>(Ji, (_hw_real)0.0, _Nx);
-        memset_loop<_hw_real>(Jui, (_hw_real)0.0, _n_U);
+		// memset_loop<_hw_real>(Ji, (_hw_real)0.0, _Nx);
+		// memset_loop<_hw_real>(Jui, (_hw_real)0.0, _n_U);
+
         // Create control guess for full horizon
-        
         // Constructing the vector of guessed control actions with respect to N and Nu
         uu_loop(control_guess, uu_1, uu_2);
         // Control Error
         horizon_u_error(uu_1, Jui);
         // Predict Horizon
-        horizon_step_prediction(current_state, uu_1, x_horizon);
+        horizon_step_prediction(current_state, uu_2, x_horizon);
         // State Error
         horizon_step_error(x_horizon, xref, Ji, final_x, final_xref);
 
@@ -150,7 +269,9 @@ public:
 #endif
         final_sum(J, J_tmp1, J_tmp2);
         // return J;
-    }
+}
+
+// ------------------------------------------------------
 	void one_step_prediction(
         _hw_real *state_plus,
         volatile _hw_real *state,
@@ -487,14 +608,19 @@ protected:
         ){
 // #pragma HLS inline
         _real control_val;
-        for (int i = 0; i < _Nh; ++i) {
+        _real control_last[_n_U];
+        for (int i = 0; i < _Nu; ++i) {
             for (int j = 0; j < _n_U; ++j) {
-                if(i < _Nu) {
-                    control_val = control_guess[j*_Nu+i];
-                }
-                else {
-                    control_val = control_guess[j*_Nu-1];	
-                }
+                control_val = control_guess[i*_n_U+j];
+                if (i == _Nu-1)
+                    control_last[j] = control_val;
+                uu_1[i*_n_U+j] =  control_val;
+                uu_2[i*_n_U+j] =  control_val;
+            }
+        }
+        for (int i = _Nu; i < _Nh; ++i) {
+            for (int j = 0; j < _n_U; ++j) {
+                control_val = control_last[j];
                 uu_1[i*_n_U+j] =  control_val;
                 uu_2[i*_n_U+j] =  control_val;
             }

@@ -12,9 +12,10 @@ typedef half _real;
 typedef float _real;
 #endif
 
+#include "config.hpp"
 #include "aux_functions.hpp"
-#include "hls_inverted_pendulum.hpp"
-#include "hls_sniffbot.hpp"
+//#include "hls_inverted_pendulum.hpp"
+//#include "hls_sniffbot.hpp"
 #include "hls_system.hpp"
 
 #ifdef INVERTED_PENDULUM_CONFIG
