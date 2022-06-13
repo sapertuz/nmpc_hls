@@ -14,7 +14,7 @@ set src_path ${workspace}/src
 set incl_path ${workspace}/include
 set main_name "main_hls_system" 
 
-set c_flags "-DSNIFFBOT_CONFIG -I${incl_path} -std=c++11 -Wno-unknown-pragmas"
+set c_flags "-DSNIFFBOT_CONFIG -DUSE_FAST_SIN_COS -I${incl_path} -std=c++11 -Wno-unknown-pragmas"
 set csim_tb_flags "-DSNIFFBOT_CONFIG -I${incl_path} -std=c++11 -DDEBUG_SYSTEM -Wno-unknown-pragmas"
 
 open_project $prj_name
@@ -35,9 +35,9 @@ config_compile -pipeline_loops 6
 config_interface -m_axi_addr64=0
 config_export -display_name sniffbot_costF -format ip_catalog -output $ip_path/sniffbot_costF.zip -rtl verilog -vendor tu-dresden -version 1.0
 
-config_core DSP48 -latency 4
+# config_core DSP48 -latency 4
 
 csim_design -clean -O -profile
-# csynth_design
+csynth_design
 # cosim_design -O -rtl vhdl
 # export_design -format ip_catalog
