@@ -32,6 +32,9 @@ typedef model_inverted_pendulum<_real_model> model_t;
 #elif defined(SNIFFBOT_CONFIG)
 #include "hls_sniffbot.hpp"
 typedef model_sniffbot<_real_model> model_t;
+#elif defined(PANDA_CONFIG)
+#include "hls_panda.hpp"
+typedef model_panda<_real_model> model_t;
 #endif
 
 #endif

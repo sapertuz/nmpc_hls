@@ -154,6 +154,7 @@ float cost_function_wrapper(
 
     _real cf;
     current_system.nmpc_cost_function(local_current_state, local_control_guess, local_xref, &cf);
+    // current_system.nmpc_cost_function_topflow(local_current_state, local_control_guess, local_xref, &cf);
     return (float) cf;
 }
 

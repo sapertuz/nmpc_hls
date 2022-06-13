@@ -103,25 +103,25 @@ public:
     ){
 #pragma HLS DATAFLOW
 
-#pragma HLS interface mode=ap_fifo port=current_state   depth=_Nx
-#pragma HLS interface mode=ap_fifo port=control_guess   depth=_n_U
-#pragma HLS interface mode=ap_fifo port=xref            depth=_Nx
+// #pragma HLS interface mode=ap_fifo port=current_state   depth=_Nx
+// #pragma HLS interface mode=ap_fifo port=control_guess   depth=_n_U
+// #pragma HLS interface mode=ap_fifo port=xref            depth=_Nx
 
-#pragma HLS interface mode=ap_fifo port=Jui_in          depth=_n_U
-#pragma HLS interface mode=ap_fifo port=Ji_in           depth=_Nx
+// #pragma HLS interface mode=ap_fifo port=Ji_in           depth=_Nx
+// #pragma HLS interface mode=ap_fifo port=Jui_in          depth=_n_U
 
-#pragma HLS interface mode=ap_fifo port=next_state      depth=_Nx
-#pragma HLS interface mode=ap_fifo port=Ji_out          depth=_Nx
-#pragma HLS interface mode=ap_fifo port=Jui_out         depth=_n_U
+// #pragma HLS interface mode=ap_fifo port=next_state      depth=_Nx
+// #pragma HLS interface mode=ap_fifo port=Ji_out          depth=_Nx
+// #pragma HLS interface mode=ap_fifo port=Jui_out         depth=_n_U
 
     _hw_real uu_1[_n_U], uu_2[_n_U];       
-#pragma HLS stream          variable=uu_1   type=fifo depth=_n_U
-#pragma HLS stream          variable=uu_2   type=fifo depth=_n_U
+#pragma HLS stream          variable=uu_1   type=FIFO depth=_n_U
+#pragma HLS stream          variable=uu_2   type=FIFO depth=_n_U
 #pragma HLS bind_storage    variable=uu_1   type=FIFO impl=LUTRAM
 #pragma HLS bind_storage    variable=uu_2   type=FIFO impl=LUTRAM
     _hw_real local_next_state[_Nx], xx_1[_Nx];
-#pragma HLS stream          variable=local_next_state   type=fifo depth=_n_U
-#pragma HLS stream          variable=xx_1               type=fifo depth=_n_U
+#pragma HLS stream          variable=local_next_state   type=FIFO depth=_Nx
+#pragma HLS stream          variable=xx_1               type=FIFO depth=_Nx
 #pragma HLS bind_storage    variable=local_next_state   type=FIFO impl=LUTRAM
 #pragma HLS bind_storage    variable=xx_1               type=FIFO impl=LUTRAM
 
@@ -138,36 +138,40 @@ public:
 }
 // ---------------------------------------------------
 	void nmpc_cost_function_topflow(
-        volatile _hw_real *current_state,
-        volatile _hw_real *control_guess,
-        volatile _hw_real *xref,
+        volatile _hw_real current_state[_Nx],
+        volatile _hw_real control_guess[_Nu*_n_U],
+        volatile _hw_real xref[_Nx*_Nh],
         _hw_real *J
     ){
-#pragma HLS DATAFLOW
+// #pragma HLS DATAFLOW
 
-#pragma HLS interface mode=ap_fifo port=current_state   depth=_Nx*2
-#pragma HLS interface mode=ap_fifo port=control_guess   depth=_Nx*2
-#pragma HLS interface mode=ap_fifo port=xref            depth=_Nx*2
+#pragma HLS interface mode=ap_fifo port=current_state   depth=_Nx
+#pragma HLS interface mode=ap_fifo port=control_guess   depth=_n_U
+#pragma HLS interface mode=ap_fifo port=xref            depth=_Nx
 
     _hw_real Ji_in[_Nx], Ji_out[_Nx]; // = 0.0;
-#pragma HLS STREAM variable=Ji_in depth=_Nx
-#pragma HLS STREAM variable=Ji_out depth=_Nx
-#pragma HLS bind_storage variable=Ji_in type=FIFO impl=LUTRAM
-#pragma HLS bind_storage variable=Ji_out type=FIFO impl=LUTRAM
+#pragma HLS stream       variable=Ji_in   type=FIFO depth=_Nx
+#pragma HLS stream       variable=Ji_out  type=FIFO depth=_Nx
+#pragma HLS bind_storage variable=Ji_in   type=FIFO impl=LUTRAM
+#pragma HLS bind_storage variable=Ji_out  type=FIFO impl=LUTRAM
 
     _hw_real Jui_in[_n_U], Jui_out[_n_U]; // = 0.0;
-#pragma HLS STREAM variable=Jui_in depth=_n_U
-#pragma HLS STREAM variable=Jui_out depth=_n_U
-#pragma HLS bind_storage variable=Jui_in type=FIFO impl=LUTRAM
+#pragma HLS stream       variable=Jui_in  type=FIFO depth=_n_U
+#pragma HLS stream       variable=Jui_out type=FIFO depth=_n_U
+#pragma HLS bind_storage variable=Jui_in  type=FIFO impl=LUTRAM
 #pragma HLS bind_storage variable=Jui_out type=FIFO impl=LUTRAM
 
-    _hw_real x_current[_Nx], x_next[_Nx], x_ref[_Nx];
-#pragma HLS STREAM variable=x_current depth=_Nx
-#pragma HLS STREAM variable=x_next depth=_Nx
-#pragma HLS STREAM variable=x_ref depth=_Nx
+    _hw_real x_current[_Nx], x_next[_Nx];
+#pragma HLS stream       variable=x_current type=FIFO depth=_Nx
+#pragma HLS stream       variable=x_next    type=FIFO depth=_Nx
 #pragma HLS bind_storage variable=x_current type=FIFO impl=LUTRAM
-#pragma HLS bind_storage variable=x_next type=FIFO impl=LUTRAM
-#pragma HLS bind_storage variable=x_ref type=FIFO impl=LUTRAM
+#pragma HLS bind_storage variable=x_next    type=FIFO impl=LUTRAM
+
+    _hw_real uu_last_ram[_n_U];
+#pragma HLS bind_storage variable=uu_last_ram type=RAM_1P impl=LUTRAM
+    _hw_real uu_last_fifo[_n_U];
+#pragma HLS stream       variable=uu_last_fifo type=fifo depth=_Nx
+#pragma HLS bind_storage variable=uu_last_fifo type=FIFO impl=LUTRAM
 
     _hw_real J_tmp1, J_tmp2;
     // memset_loop<_hw_real>(Ji, (_hw_real)0.0, _Nx);
@@ -176,29 +180,48 @@ public:
     unsigned k_xref = 0;
     unsigned k_u = 0;
     const unsigned k_cg_last = _n_U*_Nu - _n_U;
-    memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_current, current_state);
-    memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_ref, &xref[k_xref]);
     memset_loop<_hw_real>(Jui_in, (const _hw_real)0.0, _n_U);
     memset_loop<_hw_real>(Ji_in, (const _hw_real)0.0, _Nx);
-    for (unsigned i = 0; i < _Nh; ++i) {
+    memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_current, current_state);
+
+    // volatile _hw_real *x_ref_ptr, *u_current_ptr;
+    for (unsigned i = 0; i < N-1; ++i) {
+#ifdef DEBUG_SYSTEM
+        std::cout << "Horizon[" << i << "]"<< std::endl;
+#endif
+        unsigned k_u_aux = i*_n_U;
+        k_u = (k_u == k_cg_last)? k_cg_last : k_u_aux;
+        k_xref = i*_Nx;
+
+        if (k_u_aux < k_cg_last){
+            // u_current_ptr = &control_guess[k_u];
+            memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(uu_last_fifo, &control_guess[k_u]);
+        }else if (k_u_aux >= k_cg_last){
+            if(k_u_aux == k_cg_last)
+                memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(uu_last_ram, &control_guess[k_u]);
+            memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(uu_last_fifo, uu_last_ram);
+            // u_current_ptr = uu_last_fifo;
+        }
+        // x_ref_ptr = &xref[k_xref];
+
         nmpc_cost_function_lowflow(
             x_current, 
-            &control_guess[k_u], 
-            x_ref, 
+            uu_last_fifo, 
+            &xref[k_xref], 
             Jui_in, 
             Ji_in, 
             x_next,
             Jui_out, 
             Ji_out
         );
-        k_xref = i*_Nx;
-        k_u = (k_u == k_cg_last)? k_cg_last : i*_n_U;
-        memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_ref, &xref[k_xref]);
+        memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(Jui_in, Jui_out);
+        memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(Ji_in, Ji_out);
         memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(x_current, x_next);
     }
+    // x_ref_ptr = &xref[(N-1)*_Nx];
     // Weigthed Errors
     Ji_error(Ji_out, Jui_out, &J_tmp1);
-    Jf_error(x_current, x_ref, &J_tmp2);
+    Jf_error(x_current, &xref[(N-1)*_Nx], &J_tmp2);
 #ifdef DEBUG_SYSTEM
     std::cout << "Ji = " << J_tmp1 << std::endl;
     std::cout << "Jf = " << J_tmp2 << std::endl;
@@ -216,32 +239,32 @@ public:
 
 #pragma HLS DATAFLOW
 
-#pragma HLS interface mode=ap_fifo port=current_state   depth=_Nx*2
-#pragma HLS interface mode=ap_fifo port=control_guess   depth=_Nx*2
-#pragma HLS interface mode=ap_fifo port=xref            depth=_Nx*2
+#pragma HLS interface mode=ap_fifo port=current_state   depth=_Nx
+#pragma HLS interface mode=ap_fifo port=control_guess   depth=_Nx
+#pragma HLS interface mode=ap_fifo port=xref            depth=_Nx
 #pragma HLS interface mode=ap_vld  port=J
 
     _hw_real uu_1[_n_U*_Nh], uu_2[_n_U*_Nh];       
-#pragma HLS stream variable=uu_1 type=fifo depth=_n_U*2
-#pragma HLS stream variable=uu_2 type=fifo depth=_n_U*2
-#pragma HLS bind_storage variable=uu_1 type=FIFO impl=BRAM
-#pragma HLS bind_storage variable=uu_2 type=FIFO impl=BRAM
+#pragma HLS stream variable=uu_1 type=fifo depth=_n_U
+#pragma HLS stream variable=uu_2 type=fifo depth=_n_U
+#pragma HLS bind_storage variable=uu_1 type=FIFO impl=LUTRAM
+#pragma HLS bind_storage variable=uu_2 type=FIFO impl=LUTRAM
 
     _hw_real x_horizon[_Nx*_Nh]; //[Nx*N];
-#pragma HLS STREAM variable=x_horizon type=fifo depth=_Nx*2
-#pragma HLS bind_storage variable=x_horizon type=FIFO impl=BRAM
+#pragma HLS STREAM variable=x_horizon type=fifo depth=_Nx
+#pragma HLS bind_storage variable=x_horizon type=FIFO impl=LUTRAM
 
     _hw_real Ji[_Nx]; // = 0.0;
-#pragma HLS STREAM variable=Ji depth=_Nx*2
+#pragma HLS STREAM variable=Ji depth=_Nx
 #pragma HLS bind_storage variable=Ji type=FIFO impl=LUTRAM
 
     _hw_real Jui[_n_U]; // = 0.0;
-#pragma HLS STREAM variable=Jui depth=_n_U*2
+#pragma HLS STREAM variable=Jui depth=_n_U
 #pragma HLS bind_storage variable=Jui type=FIFO impl=LUTRAM
 
     _hw_real final_x[_Nx], final_xref[_Nx];
-#pragma HLS STREAM variable=final_x depth=_Nx*2
-#pragma HLS STREAM variable=final_xref depth=_Nx*2
+#pragma HLS STREAM variable=final_x depth=_Nx
+#pragma HLS STREAM variable=final_xref depth=_Nx
 #pragma HLS bind_storage variable=final_x type=FIFO impl=LUTRAM
 #pragma HLS bind_storage variable=final_xref type=FIFO impl=LUTRAM
 
@@ -291,15 +314,15 @@ public:
         _hw_real k1[_Nx], k2[_Nx], k3[_Nx], k4[_Nx];
         _hw_real state_temp[_Nx];
 
-#pragma HLS STREAM variable=local_state depth=_Nx*2 type=shared
-#pragma HLS STREAM variable=local_control depth=_Nx*2 type=shared
+#pragma HLS STREAM variable=local_state depth=_Nx type=shared
+#pragma HLS STREAM variable=local_control depth=_Nx type=shared
 
-#pragma HLS STREAM variable=k1 depth=_Nx*2 type=shared
-#pragma HLS STREAM variable=k2 depth=_Nx*2 type=shared
-#pragma HLS STREAM variable=k3 depth=_Nx*2 type=shared
-#pragma HLS STREAM variable=k4 depth=_Nx*2 type=shared
+#pragma HLS STREAM variable=k1 depth=_Nx type=shared
+#pragma HLS STREAM variable=k2 depth=_Nx type=shared
+#pragma HLS STREAM variable=k3 depth=_Nx type=shared
+#pragma HLS STREAM variable=k4 depth=_Nx type=shared
 
-#pragma HLS STREAM variable=state_temp depth=_Nx*2 type=shared
+#pragma HLS STREAM variable=state_temp depth=_Nx type=shared
 
         memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(local_state, state);
         memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(local_control, control);
@@ -380,6 +403,16 @@ protected:
             Ji_out[j] = Ji_in[j] + penality*tmp_err*tmp_err;
         }
 //        memcpy_loop_rolled<_hw_real, _hw_real, _n_U>(Ji_out, Ji_out_local);
+#ifdef DEBUG_SYSTEM
+        std::cout << " State"; print_formatted_float_array(x_hat, _Nx, 2, 6);
+        std::cout << std::endl;
+        std::cout << " Set  "; print_formatted_float_array(xref, _Nx, 2, 6); 
+        std::cout << std::endl;
+        std::cout << " Ji   "; print_formatted_float_array(Ji_out, _Nx, 2, 6); 
+        std::cout << std::endl;
+        //std::cout << "\t Control"; print_formatted_float_array(&uu[_n_U*i], _n_U, 2, 6); std::cout << std::endl;
+#endif
+
     }
 
     void one_step_u_error(
@@ -536,18 +569,11 @@ protected:
         	memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(current_xref, &xref[_Nx*i]);
         	memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(current_x, &x_horizon[_Nx*i]);
             }
-			one_step_error(Ji_buff, Ji_buff_ant, current_xref, current_x);
-            memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(Ji_buff_ant, Ji_buff);
 #ifdef DEBUG_SYSTEM
             std::cout << "Horizon[" << i << "]"<< std::endl;
-            std::cout << "\t State"; print_formatted_float_array(current_x, _Nx, 2, 6);
-            std::cout << std::endl;
-            std::cout << "\t Set  "; print_formatted_float_array(current_xref, _Nx, 2, 6); 
-            std::cout << std::endl;
-            std::cout << "\t Ji   "; print_formatted_float_array(Ji_buff, _Nx, 2, 6); 
-            std::cout << std::endl;
-            //std::cout << "\t Control"; print_formatted_float_array(&uu[_n_U*i], _n_U, 2, 6); std::cout << std::endl;
 #endif
+			one_step_error(Ji_buff, Ji_buff_ant, current_x, current_xref);
+            memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(Ji_buff_ant, Ji_buff);
         }
         memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(Ji, Ji_buff_ant);
 //        memcpy_loop_rolled<_hw_real, _hw_real, _Nx>(final_x, current_x);
