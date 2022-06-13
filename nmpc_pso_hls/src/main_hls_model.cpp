@@ -149,9 +149,9 @@ typedef float _real;
 
 
 void model_wrapper(
-    float state_dot[_Nx],
-	float state[_Nx],
-	float u_guess[_n_U]
+    volatile float state_dot[_Nx],
+	volatile float state[_Nx],
+	volatile float u_guess[_n_U]
 )
 {
 
@@ -167,50 +167,50 @@ void model_wrapper(
 
     model_t current_model;
 
-    _real local_state_dot[_Nx];
-    _real local_state[_Nx];
-    _real local_u_guess[_n_U];
+    volatile _real local_state_dot[_Nx];
+    volatile _real local_state[_Nx];
+    volatile _real local_u_guess[_n_U];
 
-    reg_local_st: memcpy_loop_unrolled<_real, float, _Nx>(local_state, (const float *)state);
-    reg_local_u_guess: memcpy_loop_unrolled<_real, float, _n_U>(local_u_guess, (const float *)u_guess);
+    reg_local_st: memcpy_loop_rolled<_real, float, _Nx>(local_state, state);
+    reg_local_u_guess: memcpy_loop_rolled<_real, float, _n_U>(local_u_guess, u_guess);
 
     current_model.model(local_state_dot, local_state, local_u_guess);
 
-    reg_st_dot: memcpy_loop_unrolled<float, _real, _Nx>(state_dot, (const _real*)local_state_dot);
+    reg_st_dot: memcpy_loop_rolled<float, _real, _Nx>(state_dot, local_state_dot);
     
 }
 
-void one_step_pred_wrapper(
-    float state_dot[_Nx],
-	float state[_Nx],
-	float u_guess[_n_U]
-)
-{
-    typedef System<_real, _Nh, _Nx, _n_U, _Nu> T_system;
-    T_system current_system(
-        _u_max, 
-        _u_min, 
-        _du_max,
-        _controlled_state,
-        _state_upper_limits, 
-        _state_lower_limits, 
-        _Q, 
-        _Qf, 
-        _R, 
-        _uss,
-        _Ts);
-
-    _real local_state_dot[_Nx];
-    _real local_state[_Nx];
-    _real local_u_guess[_n_U];
-
-    reg_local_st: memcpy_loop_unrolled<_real, float, _Nx>(local_state, (const float *)state);
-    reg_local_u_guess: memcpy_loop_unrolled<_real, float, _n_U>(local_u_guess, (const float *)u_guess);
-
-    current_system.one_step_prediction(local_state_dot, local_state, local_u_guess);
-
-    reg_st_dot: memcpy_loop_unrolled<float, _real, _Nx>(state_dot, (const _real*)local_state_dot);
-}
+//void one_step_pred_wrapper(
+//    float state_dot[_Nx],
+//	float state[_Nx],
+//	float u_guess[_n_U]
+//)
+//{
+//    typedef System<_real, _Nh, _Nx, _n_U, _Nu> T_system;
+//    T_system current_system(
+//        _u_max,
+//        _u_min,
+//        _du_max,
+//        _controlled_state,
+//        _state_upper_limits,
+//        _state_lower_limits,
+//        _Q,
+//        _Qf,
+//        _R,
+//        _uss,
+//        _Ts);
+//
+//    _real local_state_dot[_Nx];
+//    _real local_state[_Nx];
+//    _real local_u_guess[_n_U];
+//
+//    reg_local_st: memcpy_loop_unrolled<_real, float, _Nx>(local_state, (const float *)state);
+//    reg_local_u_guess: memcpy_loop_unrolled<_real, float, _n_U>(local_u_guess, (const float *)u_guess);
+//
+//    current_system.one_step_prediction(local_state_dot, local_state, local_u_guess);
+//
+//    reg_st_dot: memcpy_loop_unrolled<float, _real, _Nx>(state_dot, (const _real*)local_state_dot);
+//}
 
 int main(){
     float state_dt_dot[_Nx];
@@ -233,7 +233,7 @@ int main(){
             state_dot[j] = state_dt_dot[j]*_Ts + state_ant[j];
         }
         // Ruhge Kutta
-        one_step_pred_wrapper((float *)state_rk4_dot, (float *)state_rk4_ant, (float *)&u_guess[i*_n_U]);
+//        one_step_pred_wrapper((float *)state_rk4_dot, (float *)state_rk4_ant, (float *)&u_guess[i*_n_U]);
         
         // std::cout << "State dt = \t";
         // print_formatted_float_array(state_dt_dot, _Nx, 4, 7);
@@ -241,12 +241,12 @@ int main(){
         std::cout << "State Normal[ " << i <<" ] = \t";
         print_formatted_float_array<float>(state_dot, _Nx, 4, 7);
         std::cout << std::endl;
-        std::cout << "State RK4[ " << i <<" ] = \t";
-        print_formatted_float_array<float>(state_rk4_dot, _Nx, 4, 7);
-        std::cout << std::endl;
+//        std::cout << "State RK4[ " << i <<" ] = \t";
+//        print_formatted_float_array<float>(state_rk4_dot, _Nx, 4, 7);
+//        std::cout << std::endl;
         // std::cout << "--------------------------------------------------------------------------------------------"<<std::endl;
         memcpy_loop_unrolled<float, float, _Nx>(state_ant, (const float *)state_dot);
-        memcpy_loop_unrolled<float, float, _Nx>(state_rk4_ant, (const float *)state_rk4_dot);
+//        memcpy_loop_unrolled<float, float, _Nx>(state_rk4_ant, (const float *)state_rk4_dot);
     }
     
     return 0;
