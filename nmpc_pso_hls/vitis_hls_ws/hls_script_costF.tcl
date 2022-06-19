@@ -38,6 +38,6 @@ config_export -display_name sniffbot_costF -format ip_catalog -output $ip_path/s
 # config_core DSP48 -latency 4
 
 csim_design -clean -O -profile
-csynth_design
+# csynth_design
 # cosim_design -O -rtl vhdl
 # export_design -format ip_catalog

@@ -35,6 +35,10 @@ public:
         volatile _hw_real *control    // [4]
     ){
 
+#pragma HLS interface mode=ap_fifo port=state_dot   depth=12
+#pragma HLS interface mode=ap_fifo port=state       depth=12
+#pragma HLS interface mode=ap_fifo port=control     depth=4
+
         const _hw_real  u_max[4] =  {100, 100, 100, 100};
         const _hw_real  u_min[4] =  {-100, -100, -100, -100};
         const _real     Ixx = 1.2;    // Moment of Inertia (Ixx Iyy Izz)[kg.m^2]
@@ -74,6 +78,7 @@ public:
 
 #pragma HLS BIND_OP variable=state_dot op=hadd impl=fulldsp latency=4
 #pragma HLS BIND_OP variable=state_dot op=hsub impl=fulldsp latency=4
+#pragma HLS BIND_OP variable=state_dot op=hmul impl=fulldsp latency=4
 
 // #pragma HLS allocation function instances=local_sin limit=1
 // #pragma HLS allocation function instances=local_cos limit=1
