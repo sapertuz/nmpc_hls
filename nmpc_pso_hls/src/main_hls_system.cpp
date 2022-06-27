@@ -5,47 +5,23 @@
 #include <iostream>
 #include <iomanip>
 
-#ifdef __SYNTHESIS__
-#include "hls_math.h"
-typedef half _real;
-#else
-typedef float _real;
-#endif
+// #ifdef __SYNTHESIS__
+// #include "hls_math.h"
+// typedef half _real;
+// #else
+// typedef float _real;
+// #endif
 
-#include "config.hpp"
 #include "aux_functions.hpp"
 //#include "hls_inverted_pendulum.hpp"
 //#include "hls_sniffbot.hpp"
 #include "hls_system.hpp"
+#include "config.hpp"
+
+typedef _hw_top_real _system_real;
+
 
 #ifdef INVERTED_PENDULUM_CONFIG
-    
-    #define _Nh      3      // Prediction Horizon
-    #define _Nu     3      // Control Horizon
-    #define _Nx     4       // Number of States
-    #define _n_U    1       // Number of Inputs
-
-    const _real  _Ts = 0.1;
-    const _real  _u_max[]  = {50.0};
-    const _real  _u_min[]  = {-50.0};
-    const _real  _du_max[] = {50.0};
-    const _real  _uss[] = {0.0};
-
-    #define _Parametrization 0
-    const _real _Lambda = 10;
-    const _real _q_param = 10;
-    const _real _pmax[] = {1.0};
-    const _real _pmin[] = {-1.0};
-
-    const unsigned short _controlled_state[] = {1, 1, 1, 1};
-    const _real _state_upper_limits[] = {0.5, 1e3, 1e3, 1e3} ;
-    const _real _state_lower_limits[] = {-0.5, -1e3, -1e3, -1e3} ;
-    const _real _Q[] = {1e3, 0.0, 1e-1, 0.0};
-    const _real _Qf[] = {1e4, 0.0, 1e-0, 0.0};
-    const _real _R[] = {1e-4};
-
-    #define _Rising_Time 0
-    const _real _tr[] =  {0, 0, 0, 0};
     float initial_state[] = {0.0, 0.0, 3.1415926536, 0.0};
     // float x_ss[] = {0.4, 0.3, 0.2, 0.1};
     float u_guess[] = {39, 50};
@@ -56,32 +32,7 @@ typedef float _real;
     };
 
 #elif defined SNIFFBOT_CONFIG
-    #define _Nh 10
-    #define _Nu 10
-    #define _Nx 12
-    #define _n_U 4
-    const _real  _Ts = 0.05;
-    const _real  _u_max[] =  {100, 100, 100, 100};
-    const _real  _u_min[] =  {-100, -100, -100, -100};
-    const _real  _du_max[] =  {20, 20, 20, 20};
-    const _real  _uss[] = {0.0, 0.0, 0.0, 0.0};
-
-    #define  _Parametrization 0
-    const _real  _Lambda = 5;
-    const _real  _q_param = 2;
-    const _real  _pmax[] =  {1, 1, 1, 1};
-    const _real  _pmin[] =  {-1, -1, -1, -1};
-
-    const unsigned short _controlled_state[] = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
-    const _real  _state_upper_limits[_Nx] =  {1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3};
-    const _real  _state_lower_limits[_Nx] =  {-1e3, -1e3 -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3};
-    const _real  _Q[] =  {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
-    const _real  _Qf[] =  {10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0};
-    const _real  _R[] =  {0.02, 0.0, 0.0, 0.0};
-
-    #define  _Rising_Time 0
-    const _real _tr[] =  {10, 10, 10, 0, 0, 8, 0, 0, 0, 0, 0, 0};
-    const _real  initial_state[] =  {7.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    float initial_state[] =  {7, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     float u_guess[] = {
     0.000000e+00,   0.000000e+00,   0.000000e+00, 0.000000e+00, 
 	-1.746359e-01,  -7.003172e-02,  4.187292e-02, 3.835742e-02, 
@@ -109,6 +60,9 @@ typedef float _real;
 
 #endif
 
+top_model_t my_model;
+top_model_t *my_model_ptr = &my_model;
+
 float cost_function_wrapper(
     volatile float *control_guess,
 	volatile float *xref,
@@ -126,7 +80,7 @@ float cost_function_wrapper(
 #pragma HLS INTERFACE m_axi depth=12  port=current_state offset=slave bundle=input
 
 
-    typedef System<_real, _Nh, _Nx, _n_U, _Nu> T_system;
+    typedef System<_system_real, top_model_t, _Nh, _Nx, _n_U, _Nu> T_system;
     T_system current_system(
         _u_max, 
         _u_min, 
@@ -138,21 +92,24 @@ float cost_function_wrapper(
         _Qf, 
         _R, 
         _uss,
-        _Ts);
+        _Ts
+        ,
+        my_model_ptr
+        );
 
-    _real local_control_guess[_n_U*_Nu];
-    _real local_xref[_Nx*_Nh];
-    _real local_current_state[_Nx];
+    _system_real local_control_guess[_n_U*_Nu];
+    _system_real local_xref[_Nx*_Nh];
+    _system_real local_current_state[_Nx];
 
 #pragma HLS bind_storage variable=local_control_guess type=FIFO impl=LUTRAM
 #pragma HLS bind_storage variable=local_xref type=FIFO impl=LUTRAM
 #pragma HLS bind_storage variable=local_current_state type=FIFO impl=LUTRAM
 
-    reg_curr_st: memcpy_loop_rolled<_real, float, _Nx>(local_current_state, current_state);
-    reg_cont_gss: memcpy_loop_rolled<_real, float, _n_U*_Nu>(local_control_guess, control_guess);
-    reg_xref: memcpy_loop_rolled<_real, float, _Nx*_Nh>(local_xref, xref);
+    reg_curr_st: memcpy_loop_rolled<_system_real, float, _Nx>(local_current_state, (float *)current_state);
+    reg_cont_gss: memcpy_loop_rolled<_system_real, float, _n_U*_Nu>(local_control_guess, (float *)control_guess);
+    reg_xref: memcpy_loop_rolled<_system_real, float, _Nx*_Nh>(local_xref, (float *) xref);
 
-    _real cf;
+    _system_real cf;
     current_system.nmpc_cost_function(local_current_state, local_control_guess, local_xref, &cf);
     // current_system.nmpc_cost_function_topflow(local_current_state, local_control_guess, local_xref, &cf);
     return (float) cf;

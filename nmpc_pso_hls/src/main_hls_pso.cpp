@@ -8,21 +8,17 @@
 
 #include <iomanip>
 
-#ifdef __SYNTHESIS__
-#include "hls_math.h"
-typedef half _real;
-#else
-typedef float _real;
-#endif
+// #include "hls_nonlinear_solver.hpp"
+#include "read_from_file.hpp"
+#include "aux_functions.hpp"
 
+// Test
+// {
 #include "config.hpp"
 #include "hls_pso.hpp"
 #include "hls_system.hpp"
 #include "hls_pseudorand.hpp"
-
-#include "read_from_file.hpp"
-#include "aux_functions.hpp"
-#include "hls_system.hpp"
+// }
 
 /************************** Constant Definitions *****************************/
 
@@ -30,125 +26,25 @@ typedef float _real;
  * The following constants ...
  * 
  */
-
 //#define SNIFFBOT_CONFIG
 //#define PSO_CONFIG
 const char config_file_std[] = "./config/sniffbot/project_config.txt";
 const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt";
 
-#ifdef PSO_CONFIG
-    #define _n_S             10
-    #define _KPSO            1
-    #define _stable_zero     1
-    #define _maxiter         200
-    #define _max_v           30
-    #define _w0              0.9
-    #define _wf              0.1
-    #define _c1              2.1
-    #define _c2              1.0
-    #define _threshold       1e-2
-    #define _stop_criteria   0
-    #define _slope           (_wf-_w0)/_maxiter
-    const _real rand_min = -1.0;
-    const _real rand_max = 1.0;
-    const int rand_seed[_n_S] = {
-        84680,
-        577726,
-        273600,
-        804402,
-        747952
-    };
-#endif
 
-#ifdef INVERTED_PENDULUM_CONFIG
 
-    #define _Nh     3       // Prediction Horizon
-    #define _Nu     3       // Control Horizon
-    #define _Nx     4       // Number of States
-    #define _n_U    1       // Number of Inputs
-
-    const _real  _Ts = 0.1;
-    const _real  _u_max[]  = {50.0};
-    const _real  _u_min[]  = {-50.0};
-    const _real  _du_max[] = {50.0};
-    const _real  _uss[] = {0.0};
-
-    #define _Parametrization 0
-    const _real _Lambda = 10;
-    const _real _q_param = 10;
-    const _real _pmax[] = {1.0};
-    const _real _pmin[] = {-1.0};
-
-    const unsigned short _controlled_state[] = {1, 1, 1, 1};
-    const _real _state_upper_limits[] = {0.5, 1e3, 1e3, 1e3} ;
-    const _real _state_lower_limits[] = {-0.5, -1e3, -1e3, -1e3} ;
-    const _real _Q[] = {1e3, 0.0, 1e-1, 0.0};
-    const _real _Qf[] = {1e4, 0.0, 1e-0, 0.0};
-    const _real _R[] = {1e-4};
-
-    #define _Rising_Time 0
-    const _real _tr[] =  {0, 0, 0, 0};
-    float initial_state[] = {0.0, 0.0, 3.1415926536, 0.0};
-    // float x_ss[] = {0.4, 0.3, 0.2, 0.1};
-#elif defined(SNIFFBOT_CONFIG)
-    #define _Nh 50
-    #define _Nu 50
-    #define _Nx 12
-    #define _n_U 4
-    const _real  _Ts = 0.05;
-    const _real  _u_max[] =  {100, 100, 100, 100};
-    const _real  _u_min[] =  {-100, -100, -100, -100};
-    const _real  _du_max[] =  {
-        20, 
-        20, 
-        20, 
-        20
-    };
-    const _real  _uss[] = {0.0, 0.0, 0.0, 0.0};
-
-    #define  _Parametrization 0
-    const _real  _Lambda = 5;
-    const _real  _q_param = 2;
-    const _real  _pmax[] =  {1, 1, 1, 1};
-    const _real  _pmin[] =  {-1, -1, -1, -1};
-
-    const unsigned short _controlled_state[] = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
-    const _real  _state_upper_limits[_Nx] =  {1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3};
-    const _real  _state_lower_limits[_Nx] =  {-1e3, -1e3 -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3};
-    const _real  _Q[] =  {
-        1, 
-        1, 
-        1, 
-        1, 
-        1, 
-        1, 
-        0, 0, 0, 0, 0, 0};
-    const _real  _Qf[] =  {
-        10, 
-        10, 
-        10, 
-        10, 
-        10, 
-        10, 
-        0, 0, 0, 0, 0, 0};
-    const _real  _R[] =  {
-        0.0005, 
-        0.0005, 
-        0.0005, 
-        0.0005
-    };
-
-    #define  _Rising_Time 0
-    const _real _tr[] =  {10, 10, 10, 0, 0, 8, 0, 0, 0, 0, 0, 0};
-    const _real  initial_state[] =  {7.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-#endif
-
+/************************** Class Definitions ****************************/
+// Test
+// {
+typedef _hw_top_real _pso_real;
+// }
 
 /***************** Macros (Inline Functions) Definitions *********************/
 
 /*
  * Wrapper for non_linear solver
  */
+
 int nonlinear_solver_wrapper(
     volatile float *x_curr,//[_Nx], 
     volatile float *u_curr,//[_n_U], 
@@ -185,9 +81,8 @@ void update_system();
  */
 char *config_file;
 int twist_ref = 0;
-_real SimulationTime;
+float SimulationTime;
 
-typedef System<float, _Nh, _Nx, _n_U, _Nu> T_system;
 std::string sim_type;
 std::string simulation_config_file;
 
@@ -200,23 +95,88 @@ float * uref; // Reference command
 float * xss;  // Reference states at steady-state
 float * uss;  // Reference command at steady-state
 
-_real ** state_matrix; // Reference trajectory from file
+float ** state_matrix; // Reference trajectory from file
 
-_real * u_curr;
+float * u_curr;
 
-_real ** control_history;
-_real ** state_history;
-_real * iterations;
-_real * cost_history;
+float ** control_history;
+float ** state_history;
+float * iterations;
+float * cost_history;
 
 // Filter Parameters
-_real * alpha_ref;        // Filtered step coeficient for 95% of rising time
+float * alpha_ref;        // Filtered step coeficient for 95% of rising time
 
-_real * disturbance;
+float * disturbance;
 int disturbance_size = 0;
-_real ** disturbance_history;
-_real ** disturbance_matrix;
-_real friction_coefficient;
+float ** disturbance_history;
+float ** disturbance_matrix;
+float friction_coefficient;
+
+//#define SNIFFBOT_CONFIG
+//#define PSO_CONFIG
+const char config_file_std[] = "./config/sniffbot/project_config.txt";
+const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt";
+
+// Test
+// {
+// Model Core Generator
+top_model_t my_model;
+top_model_t *my_model_ptr = &my_model;
+// System Core Generator
+typedef System<_pso_real,top_model_t,_Nh, _Nx, _n_U, _Nu> _system_t; 
+_system_t _hw_system(
+    _u_max, 
+    _u_min, 
+    _du_max,
+    _controlled_state,
+    _state_upper_limits, 
+    _state_lower_limits, 
+    _Q, 
+    _Qf, 
+    _R, 
+    _uss, 
+    _Ts
+    ,
+    my_model_ptr
+);
+// Pseudo Random Core Generator
+typedef pseudoRand_gen<_pso_real, _n_S> _randCore_t;
+_randCore_t _hw_rand_core(
+    (const float)rand_min, 
+    (const float)rand_max
+);
+
+// Nonlinear PSO Solver
+_system_t *_hw_system_ptr = &_hw_system;
+_randCore_t *_hw_rand_core_ptr = &_hw_rand_core;
+
+typedef PSO<_pso_real, _randCore_t, _system_t, _n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
+T_solver my_solver(
+    _stable_zero,
+    _max_v,
+    _w0,
+    _wf,
+    _slope,
+    _c1,
+    _c2,
+    _u_min,
+    _u_max,
+    _du_max,
+    _uss
+    ,
+    // _controlled_state,
+    // _state_upper_limits, 
+    // _state_lower_limits, 
+    // _Q, 
+    // _Qf, 
+    // _R, 
+    // _Ts
+    // ,
+    _hw_system_ptr,
+    _hw_rand_core_ptr
+);
+// }
 
 /*****************************************************************************/
 /**
@@ -275,8 +235,8 @@ int main(int argc, char ** argv){
         }
         std::string temp_str;
 
-        _real * u_ref_input;
-        _real * initial_state;
+        float * u_ref_input;
+        float * initial_state;
 
         // Read Configuration File
         float SimulationTime = read_real(&sim_config, (std::string)"SimulationTime");
@@ -288,19 +248,19 @@ int main(int argc, char ** argv){
 	    initial_state = (float *) malloc(_Nx*sizeof(float));
 	    read_real_vector(&sim_config, (std::string)"initial_state", initial_state, _Nx);
 
-        u_ref_input = (_real *) malloc(_n_U*sizeof(_real));
+        u_ref_input = (float *) malloc(_n_U*sizeof(float));
         read_real_vector(&sim_config, (std::string)"u_ref", u_ref_input, _n_U);
 
-        uss =  (_real *) malloc(_n_U*sizeof(_real));
+        uss =  (float *) malloc(_n_U*sizeof(float));
         read_real_vector(&sim_config, (std::string)"uss", uss, _n_U);
         
         ref_size = read_int(&sim_config, (std::string)"state_ref");
 
         // Allocate memory for state and control references
-        xref = (_real *) malloc(qtd_pontos*_Nx*sizeof(_real));
-        uref = (_real *) malloc(qtd_pontos*_n_U*sizeof(_real));
-        xss =  (_real *) malloc(_Nx*sizeof(_real));
-        disturbance = (_real *) malloc(_n_U*sizeof(_real));
+        xref = (float *) malloc(qtd_pontos*_Nx*sizeof(float));
+        uref = (float *) malloc(qtd_pontos*_n_U*sizeof(float));
+        xss =  (float *) malloc(_Nx*sizeof(float));
+        disturbance = (float *) malloc(_n_U*sizeof(float));
         if((state_matrix = alloc_matrix(ref_size, _Nx+1)) == NULL) {return(-1);}
         if((state_history = alloc_matrix(qtd_pontos, _Nx)) == NULL) {return -1;}
         if((control_history = alloc_matrix(qtd_pontos, _n_U)) == NULL) {return -1;}
@@ -342,18 +302,25 @@ int main(int argc, char ** argv){
 //	}
     std::cout << "- Loaded all." << std::endl;
 
-    T_system current_system(
-        _u_max, 
-        _u_min, 
-        _du_max,
+    top_model_t my_sim_model;
+    top_model_t *my_sim_model_ptr = &my_sim_model;
+
+    typedef System<float, top_model_t, _Nh, _Nx, _n_U, _Nu> T_sim_system;
+    T_sim_system current_system(
+        (float *)_u_max,
+        (float *)_u_min, 
+        (float *)_du_max,
         _controlled_state,
-        _state_upper_limits, 
-        _state_lower_limits, 
-        _Q, 
-        _Qf, 
-        _R, 
-        _uss,
-        _Ts);
+        (float *)_state_upper_limits, 
+        (float *)_state_lower_limits, 
+        (float *)_Q, 
+        (float *)_Qf, 
+        (float *)_R, 
+        (float *)_uss,
+        (float)_Ts
+        ,
+        my_sim_model_ptr
+        );
 
     int iter = 0;
     int xss_index = 0;
@@ -473,7 +440,7 @@ int main(int argc, char ** argv){
     clock_gettime(CLOCK_ID, &requestEnd);
     double accum = ( requestEnd.tv_sec - requestStart.tv_sec ) + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / BILLION;
 
-    std::cout << "Avg.: " << accum/qtd_pontos*1000 << " ms | " << "Max: " << max_cycle_time*1000 << " ms | Ts: " << _Ts*1000 << " ms" << std::endl;
+    std::cout << "Avg.: " << accum/qtd_pontos*1000 << " ms | " << "Max: " << max_cycle_time*1000 << " ms | Ts: " << (float)_Ts*1000 << " ms" << std::endl;
 
     if(last_best != NULL) free(last_best);
     if(new_best != NULL) free(new_best);
@@ -500,11 +467,6 @@ void update_xss(int iter, int xss_index) {
     }
 }
 
-void initializeFilteringCoefficients(int number_of_states){
-    for (int i = 0; i < number_of_states; ++i) {
-        alpha_ref[i] = exp(-3.0*_Ts/_tr[i]);
-    }
-}
 
 void initialize_LastBest(float * last_best){
     for (int i = 0; i < _Nu*_n_U; ++i) {
@@ -577,80 +539,27 @@ int nonlinear_solver_wrapper(
 #pragma HLS INTERFACE m_axi depth=4     port=uss        offset=slave bundle=input
 #pragma HLS INTERFACE m_axi depth=120   port=new_best   offset=slave bundle=input
 
-    // System Core Generator
-    typedef System<_real,_Nh, _Nx, _n_U, _Nu> _system_t; 
-    _system_t _hw_system(
-        _u_max, 
-        _u_min, 
-        _du_max,
-        _controlled_state,
-        _state_upper_limits, 
-        _state_lower_limits, 
-        _Q, 
-        _Qf, 
-        _R, 
-        _uss, 
-        _Ts
-    );
-    _system_t *_hw_system_ptr = &_hw_system;
-
-    // Pseudo Random Core Generator
-    typedef pseudoRand_gen<_real, _n_S> _randCore_t;
-    _randCore_t _hw_rand_core(
-        (int *)rand_seed, 
-        (const float)rand_min, 
-        (const float)rand_max
-    );
-    _randCore_t *_hw_rand_core_ptr = &_hw_rand_core;
-
-    // Nonlinear PSO Solver
-    typedef PSO<_real, _randCore_t, _system_t,_n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
-    T_solver my_solver(
-        _stable_zero,
-        _max_v,
-        _w0,
-        _wf,
-        _slope,
-        _c1,
-        _c2,
-        _u_min,
-        _u_max,
-        _du_max,
-        _uss
-        ,
-        // _controlled_state,
-        // _state_upper_limits, 
-        // _state_lower_limits, 
-        // _Q, 
-        // _Qf, 
-        // _R, 
-        // _Ts
-        // ,
-        _hw_system_ptr,
-        _hw_rand_core_ptr
-	);
-
     int iterations;
-	_real my_x_curr[_Nx] ;
-	_real my_u_curr[_n_U] ;
-	_real my_last_best[_n_U*_Nu] ;
-	_real my_xref[_Nx*_Nh];
-	_real my_uref[_n_U] ;
-	_real my_xss[_Nx];
-	_real my_uss[_n_U] ;
+	_pso_real my_x_curr[_Nx] ;
+	_pso_real my_u_curr[_n_U] ;
+	_pso_real my_last_best[_n_U*_Nu] ;
+	_pso_real my_xref[_Nx*_Nh];
+	_pso_real my_uref[_n_U] ;
+	_pso_real my_xss[_Nx];
+	_pso_real my_uss[_n_U] ;
 
-	_real my_new_best[_Nu*_n_U];
-	_real my_J;
+	_pso_real my_new_best[_Nu*_n_U];
+	_pso_real my_J;
 
 //#pragma HLS bind_storage variable=local_control_guess type=FIFO impl=LUTRAM
 
-    memcpy_loop_rolled<_real, float, _Nx>(my_x_curr, (volatile float *)x_curr );
-    memcpy_loop_rolled<_real, float, _n_U>(my_u_curr, (volatile float *)u_curr );
-    memcpy_loop_rolled<_real, float, _Nu*_n_U>(my_last_best, (volatile float *)last_best );
-    memcpy_loop_rolled<_real, float, _Nu*_Nx>(my_xref, (volatile float *)xref );
-    memcpy_loop_rolled<_real, float, _n_U>(my_uref, (volatile float *)uref );
-    memcpy_loop_rolled<_real, float, _Nx>(my_xss, (volatile float *)xss );
-    memcpy_loop_rolled<_real, float, _n_U>(my_uss, (volatile float *)uss );
+    memcpy_loop_rolled<_pso_real, float, _Nx>(my_x_curr, (float *)x_curr );
+    memcpy_loop_rolled<_pso_real, float, _n_U>(my_u_curr, (float *)u_curr );
+    memcpy_loop_rolled<_pso_real, float, _Nu*_n_U>(my_last_best, (float *)last_best );
+    memcpy_loop_rolled<_pso_real, float, _Nu*_Nx>(my_xref, (float *)xref );
+    memcpy_loop_rolled<_pso_real, float, _n_U>(my_uref, (float *)uref );
+    memcpy_loop_rolled<_pso_real, float, _Nx>(my_xss, (float *)xss );
+    memcpy_loop_rolled<_pso_real, float, _n_U>(my_uss, (float *)uss );
     
     iterations = my_solver.execute(
         my_x_curr, 
@@ -664,7 +573,8 @@ int nonlinear_solver_wrapper(
         &my_J
     );
 
-    memcpy_loop_rolled<float, _real, _Nu*_n_U>(new_best, (volatile float *)my_new_best );
+    memcpy_loop_rolled<float, _pso_real, _Nu*_n_U>(new_best, (_pso_real *)my_new_best );
     J[0] = (float) my_J;
     return iterations;
+
 }

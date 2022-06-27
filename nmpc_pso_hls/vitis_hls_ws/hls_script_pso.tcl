@@ -12,19 +12,21 @@ set workspace [file dirname $workspace]
 
 set src_path ${workspace}/src
 set incl_path ${workspace}/include
+set module_c_file "hls_nonlinear_solver" 
 set main_name "main_hls_pso" 
 
+set arg_str "${workspace}/config/sniffbot/project_config.txt ${workspace}/config/sniffbot/simulation_config_ring.txt"
 set c_flags "-DSNIFFBOT_CONFIG -DPSO_CONFIG -DUSE_FAST_SIN_COS -I${incl_path} -std=c++11 -Wno-unknown-pragmas"
 set csim_tb_flags "-DSNIFFBOT_CONFIG -DPSO_CONFIG -I${incl_path} -std=c++11  -DDEBUG_FILE -DPRINT_TO_TERMINAL -Wno-unknown-pragmas"
 
 open_project $prj_name
 set_top $prj_top
 
-add_files $src_path/$main_name.cpp -cflags $c_flags -csimflags $csim_tb_flags
-foreach file [glob -dir $incl_path *.hpp] {
-    add_files $file
-}
+# foreach file [glob -dir $incl_path *.hpp] {
+#     add_files $file
+# }
 
+add_files $src_path/${module_c_file}.cpp -cflags $c_flags -csimflags $csim_tb_flags
 add_files -tb ${src_path}/${main_name}.cpp -cflags $csim_tb_flags -csimflags $csim_tb_flags
 
 open_solution "solution_system" -flow_target vivado
@@ -37,7 +39,7 @@ config_export -display_name sniffbot_costF -format ip_catalog -output $ip_path/s
 
 # config_core DSP48 -latency 4
 
-csim_design -clean -O -profile
-# csynth_design
+csim_design -argv $arg_str -clean -O -profile
+csynth_design
 # cosim_design -O -rtl vhdl
 # export_design -format ip_catalog

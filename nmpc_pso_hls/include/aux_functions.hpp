@@ -57,7 +57,7 @@ template<typename array_type_dest, typename array_type_src, unsigned n> void mem
 }
 
 template<typename array_type_dest, typename array_type_src, unsigned n> void memcpy_loop_rolled
-    (volatile array_type_dest dest[n], volatile array_type_src src[n]){
+    (array_type_dest dest[n], array_type_src src[n]){
 #pragma HLS inline
     // Copy contents of src[] to dest[]
     memcpy_loop: for (unsigned short i=0; i<n; i++){

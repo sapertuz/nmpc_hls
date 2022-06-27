@@ -9,19 +9,26 @@ template<
     unsigned ncores
 >class pseudoRand_gen{
 protected:
-    int rnd_seed_co[ncores];
-    char flag[ncores];
+    int rnd_seed_co[10]={
+        17279329,
+        334905,
+        8550184,
+        14541370,
+        13613342,
+        18664584,
+        3189472,
+        12121103,
+        23714,
+        18431762
+    };
     const float out_min;
     const float out_max;
     const float divider;
-    const int *rnd_seed;
 public:
 constexpr pseudoRand_gen(
-    const int new_seed[ncores],
     const float _out_min,
     const float _out_max
-) : rnd_seed(new_seed), 
-    out_min(_out_min), 
+) : out_min(_out_min), 
     out_max(_out_max),
     divider(1.0f/(RAND_INT_MAX - RAND_INT_MIN))
 {
@@ -30,26 +37,26 @@ constexpr pseudoRand_gen(
 _hw_real rand_num (void)
 {
 //#pragma HLS inline
-#pragma HLS ALLOCATION instances=mul limit=1 operation
-#pragma HLS ALLOCATION instances=fmul limit=1 operation
-#pragma HLS ALLOCATION instances=fsub limit=1 operation
-#pragma HLS ALLOCATION instances=fadd limit=1 operation
+#pragma HLS ALLOCATION type=operation instances=mul limit=1
+#pragma HLS ALLOCATION type=operation instances=sub limit=1
+#pragma HLS ALLOCATION type=operation instances=add limit=1
+#pragma HLS ALLOCATION type=operation instances=fmul limit=1
+#pragma HLS ALLOCATION type=operation instances=fsub limit=1
+#pragma HLS ALLOCATION type=operation instances=fadd limit=1
 
-    rnd_seed_co[0] = flag[0]==1 ? rnd_seed_co[0] : rnd_seed[0];
-    flag[0] = 1;
     return aux_rand_num(&rnd_seed_co[0]);
 };
 //---------------------------------------------------------------------
 _hw_real rand_num (unsigned core)
 {
 //#pragma HLS inline
-#pragma HLS ALLOCATION instances=mul limit=1 operation
-#pragma HLS ALLOCATION instances=fmul limit=1 operation
-#pragma HLS ALLOCATION instances=fsub limit=1 operation
-#pragma HLS ALLOCATION instances=fadd limit=1 operation
+#pragma HLS ALLOCATION type=operation instances=mul limit=1
+#pragma HLS ALLOCATION type=operation instances=sub limit=1
+#pragma HLS ALLOCATION type=operation instances=add limit=1
+#pragma HLS ALLOCATION type=operation instances=fmul limit=1
+#pragma HLS ALLOCATION type=operation instances=fsub limit=1
+#pragma HLS ALLOCATION type=operation instances=fadd limit=1
 
-    rnd_seed_co[core] = flag[core]==1 ? rnd_seed_co[core] : rnd_seed[core];
-    flag[core] = 1;
     return aux_rand_num(&rnd_seed_co[core]);
 };
 
