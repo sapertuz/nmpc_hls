@@ -8,17 +8,19 @@
 
 #include <iomanip>
 
-// #include "hls_nonlinear_solver.hpp"
+#include "hls_nonlinear_solver.hpp"
 #include "read_from_file.hpp"
 #include "aux_functions.hpp"
 
+/*
 // Test
 // {
 #include "config.hpp"
-#include "hls_pso.hpp"
-#include "hls_system.hpp"
 #include "hls_pseudorand.hpp"
+#include "hls_system.hpp"
+#include "hls_pso.hpp"
 // }
+*/
 
 /************************** Constant Definitions *****************************/
 
@@ -36,7 +38,7 @@ const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt
 /************************** Class Definitions ****************************/
 // Test
 // {
-typedef _hw_top_real _pso_real;
+// typedef _hw_top_real _pso_real;
 // }
 
 /***************** Macros (Inline Functions) Definitions *********************/
@@ -45,6 +47,9 @@ typedef _hw_top_real _pso_real;
  * Wrapper for non_linear solver
  */
 
+/*
+// Test
+// {
 int nonlinear_solver_wrapper(
     volatile float *x_curr,//[_Nx], 
     volatile float *u_curr,//[_n_U], 
@@ -58,6 +63,8 @@ int nonlinear_solver_wrapper(
     float *new_best,//[_Nu*_n_U],
     float *J
 );
+// }
+*/
 
 /*
  * Simulation Functions
@@ -113,11 +120,7 @@ float ** disturbance_history;
 float ** disturbance_matrix;
 float friction_coefficient;
 
-//#define SNIFFBOT_CONFIG
-//#define PSO_CONFIG
-const char config_file_std[] = "./config/sniffbot/project_config.txt";
-const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt";
-
+/*
 // Test
 // {
 // Model Core Generator
@@ -146,11 +149,9 @@ _randCore_t _hw_rand_core(
     (const float)rand_min, 
     (const float)rand_max
 );
-
 // Nonlinear PSO Solver
 _system_t *_hw_system_ptr = &_hw_system;
 _randCore_t *_hw_rand_core_ptr = &_hw_rand_core;
-
 typedef PSO<_pso_real, _randCore_t, _system_t, _n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
 T_solver my_solver(
     _stable_zero,
@@ -177,6 +178,7 @@ T_solver my_solver(
     _hw_rand_core_ptr
 );
 // }
+*/
 
 /*****************************************************************************/
 /**
@@ -395,13 +397,13 @@ int main(int argc, char ** argv){
         for (int j = 0; j < _n_U; ++j) {
             disturbance[j] = u_curr[j];
         }
-        /*
-         * No disturbance for now
-        if(disturbance_size > 0){
-            //std::cout << "With disturbance" << std::endl;
-            add_disturbance(iter);
-        }
-        */
+        
+        // No disturbance for now
+        // if(disturbance_size > 0){
+        //     //std::cout << "With disturbance" << std::endl;
+        //     add_disturbance(iter);
+        // }
+        
         // output model
         current_system.one_step_prediction(next_state, curr_state, disturbance);
         
@@ -454,7 +456,6 @@ int main(int argc, char ** argv){
     return 0;
 }
 
-
 void update_xss(int iter, int xss_index) {
     for (int k = xss_index; k < ref_size; k++) {
         if((iter*_Ts) <= state_matrix[k][0]) {
@@ -504,6 +505,10 @@ void add_disturbance(int iter){
     }
 }
 
+/*
+
+// Test
+// {
 int nonlinear_solver_wrapper(
     volatile float *x_curr,//[_Nx], 
     volatile float *u_curr,//[_n_U], 
@@ -578,3 +583,6 @@ int nonlinear_solver_wrapper(
     return iterations;
 
 }
+// }
+
+*/

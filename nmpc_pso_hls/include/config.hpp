@@ -15,16 +15,6 @@
 #define N_DOFS 7
 #define BILLION 1E9
 
-#if defined(_POSIX_MONOTONIC_CLOCK)
-/*  The identifier for the system-wide monotonic clock, which is defined
- *  as a clock whose value cannot be set via clock_settime() and which
- *  cannot have backward clock jumps. */
-
-    #define CLOCK_ID CLOCK_MONOTONIC
-#else
-    #define CLOCK_ID CLOCK_REALTIME
-#endif
-
 #ifdef __SYNTHESIS__
 #include "hls_math.h"
 typedef half _hw_top_real;
@@ -32,29 +22,29 @@ typedef half _hw_top_real;
 typedef float _hw_top_real;
 #endif
 
-#ifdef PSO_CONFIG
-    #define _KPSO            1
-    #define _stable_zero     1
-    #define _n_S             10
-    #define _maxiter         200
-    #define _max_v           30
-    #define _w0              0.9
-    #define _wf              0.1
-    #define _c1              2.1
-    #define _c2              1.0
-    #define _threshold       1e-2
-    #define _stop_criteria   0
-    #define _slope           (_wf-_w0)/_maxiter
-    const _hw_top_real rand_min = 0.0;
-    const _hw_top_real rand_max = 1.0;
-    // const int rand_seed[] = {
-        // 84680,
-        // 577726,
-        // 273600,
-        // 804402,
-        // 747952
-    // };
-#endif
+// #ifdef PSO_CONFIG
+#define _KPSO 1
+#define _stable_zero 1
+#define _n_S 10
+#define _maxiter 200
+#define _max_v 30
+#define _w0 0.9
+#define _wf 0.1
+#define _c1 2.1
+#define _c2 1.0
+#define _threshold 1e-2
+#define _stop_criteria 0
+#define _slope (_wf-_w0)/_maxiter
+const _hw_top_real rand_min = 0.0;
+const _hw_top_real rand_max = 1.0;
+// const int rand_seed[] = {
+    // 84680,
+    // 577726,
+    // 273600,
+    // 804402,
+    // 747952
+// };
+// #endif
 
 #ifdef INVERTED_PENDULUM_CONFIG
 
@@ -86,8 +76,8 @@ typedef float _hw_top_real;
     const _hw_top_real _tr[] =  {0, 0, 0, 0};
     // float x_ss[] = {0.4, 0.3, 0.2, 0.1};
 #elif defined(SNIFFBOT_CONFIG)
-    #define _Nh 10
-    #define _Nu 10
+    #define _Nh 25
+    #define _Nu 25
     #define _Nx 12
     #define _n_U 4
     const _hw_top_real  _Ts = 0.05;
@@ -146,6 +136,16 @@ typedef model_sniffbot<_hw_top_real> top_model_t;
 #elif defined(PANDA_CONFIG)
 #include "hls_panda.hpp"
 typedef model_panda<_hw_top_real> top_model_t;
+#endif
+
+#if defined(_POSIX_MONOTONIC_CLOCK)
+/*  The identifier for the system-wide monotonic clock, which is defined
+ *  as a clock whose value cannot be set via clock_settime() and which
+ *  cannot have backward clock jumps. */
+
+    #define CLOCK_ID CLOCK_MONOTONIC
+#else
+    #define CLOCK_ID CLOCK_REALTIME
 #endif
 
 #endif
