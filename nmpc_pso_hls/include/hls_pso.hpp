@@ -70,9 +70,24 @@ protected:
 	const _pso_hw_real init_v; // initial velocity
 
 	// Particles
-	// _pso_hw_real x[_pso_n_S][_pso_Nu*_pso_n_U];
-	// _pso_hw_real y[_pso_n_S][_pso_Nu*_pso_n_U];
-	// _pso_hw_real v[_pso_n_S][_pso_Nu*_pso_n_U];
+#ifdef __SYNTHESIS__
+	_pso_hw_real x[n_S][Nu*n_U];
+#pragma HLS bind_storage variable=x type=RAM_T2P impl=BRAM
+#pragma HLS stream variable=x type=shared
+	_pso_hw_real y[n_S][Nu*n_U];
+#pragma HLS bind_storage variable=y type=RAM_T2P impl=BRAM
+#pragma HLS stream variable=y type=shared
+	_pso_hw_real v[n_S][Nu*n_U];
+#pragma HLS bind_storage variable=v type=RAM_T2P impl=BRAM
+#pragma HLS stream variable=v type=shared
+#else
+	//_pso_hw_real bestfitness[_pso_maxiter];
+	//_pso_hw_real global_min[Nu*n_U];
+	_pso_hw_real **x;
+	_pso_hw_real **y;
+	_pso_hw_real **v;
+#endif
+
 	int valid_particle[_pso_n_S];
 	int number_of_active_particles;
 
@@ -89,28 +104,6 @@ protected:
 	const unsigned int Nu = _pso_Nu;
 	// _pso_hw_real u_from_parameters[_N*_pso_n_U];
 
-	//ExportData * exporter;
-
-/*	
-	// System
-	const unsigned short controlled_state[_pso_Nx];
-	const _pso_hw_real state_upper_limits[_pso_Nx];
-	const _pso_hw_real state_lower_limits[_pso_Nx];
-	const _pso_hw_real Q[_pso_Nx];
-	const _pso_hw_real Qf[_pso_Nx];
-	const _pso_hw_real R[_pso_n_U];
-	const _pso_hw_real Ts;
-	
-	typedef System<_pso_hw_real,_pso_Nh, _pso_Nx, _pso_n_U, _pso_Nu> _pso_system_t; 
-	
-
-	// Random gen
-	const _pso_hw_real rand_min = -1.0;
-	const _pso_hw_real rand_max = 1.0;
-	const int rand_seed[_pso_n_S];
-
-	typedef pseudoRand_gen<_pso_hw_real, _pso_n_S> _pso_randCore_t;
-*/
 	_pso_system_t *current_system;
 	_pso_randCore_t *randGen;
 public:
@@ -181,26 +174,10 @@ int execute(
     //controled_system->setState(x_curr);
 
 	// Particles Variables
-#ifdef __SYNTHESIS__
-	_pso_hw_real x[n_S][Nu*n_U];
-#pragma HLS bind_storage variable=x type=RAM_T2P impl=BRAM
-#pragma HLS stream variable=x type=shared
-	_pso_hw_real y[n_S][Nu*n_U];
-#pragma HLS bind_storage variable=y type=RAM_T2P impl=BRAM
-#pragma HLS stream variable=y type=shared
-	_pso_hw_real v[n_S][Nu*n_U];
-#pragma HLS bind_storage variable=v type=RAM_T2P impl=BRAM
-#pragma HLS stream variable=v type=shared
-#else
-	//_pso_hw_real bestfitness[_pso_maxiter];
-	//_pso_hw_real global_min[Nu*n_U];
-	_pso_hw_real **x;
-	_pso_hw_real **y;
-	_pso_hw_real **v;
+#ifndef __SYNTHESIS__
 	if((x = alloc_matrix(n_S, Nu*n_U)) == NULL) {return -1;}
 	if((y = alloc_matrix(n_S, Nu*n_U)) == NULL) {return -1;}
 	if((v = alloc_matrix(n_S, Nu*n_U)) == NULL) {return -1;}
-
 #endif
 
     number_of_active_particles = n_S;    
@@ -254,19 +231,19 @@ int execute(
 	calculate_du_min();
 
 	initializeConstrains(u_curr_local);
-    initializeParticlesWithDuConstrains(u_curr_local, x, y, v);
+    initializeParticlesWithDuConstrains(u_curr_local);
 
 //#if (n_U > 1)
 //    if((iteration == 0) && (n_U > 1)) {
-	equalizeParticles(x, iteration);
+	equalizeParticles(iteration);
 //    }        
 //#endif
 
 //    if ((kpso == 1) && (iteration > 0)) {
-    initializeLastBestKPSO(last_best, x, particle_last_best);
+    initializeLastBestKPSO(last_best, particle_last_best);
 //    }
 //    if (stable_zero == 1) {
-	initializeStableZero(u_curr_local, x, particle_stable_zero);
+	initializeStableZero(u_curr_local, particle_stable_zero);
 //    } 
 
     initializeBestLocalFitness();
@@ -286,8 +263,8 @@ int execute(
 
 	while (k < maxiter) {
         evaluateFitnessAndDetectLocalBest(
-			x, 
-			y, 
+			// x, 
+			// y, 
 			x_curr_local, 
 			xref_local, 
 			uref_local, 
@@ -298,7 +275,7 @@ int execute(
 		best_pos = detectGlobalMinimum(k);
 		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(global_min, (_pso_hw_real *)&y[best_pos][0]);
 
-        updateParticlesWithDuConstrains(x, y, v);    
+        updateParticlesWithDuConstrains();    
 #ifdef DEBUG_PSO
 		std::cout << "[" << k << "] ";
 		std::cout << "\t"; print_formatted_float_array(&global_min[0], n_U, 2, 6);
@@ -436,7 +413,7 @@ int detectGlobalMinimum(
 // ---------------------------------------------------
 void equalizeParticles(
 //	_pso_hw_real _x[][_pso_Nu*_pso_n_U],
-	_pso_hw_real **_x,
+	// _pso_hw_real **_x,
 	_pso_hw_real iteration
 ){
 //#pragma HLS inline
@@ -453,8 +430,8 @@ void equalizeParticles(
 	 	   	int idx1 = k*n_U;
 	 	   	int idx2 = 0;
 			for (unsigned int j = 0; j < n_U; ++j) {
-				x_tmp = _x[i][idx2];
-                _x[i][idx1] = x_tmp;
+				x_tmp = x[i][idx2];
+                x[i][idx1] = x_tmp;
 				idx1++;
 				idx2++;
             }
@@ -507,15 +484,15 @@ void detectInvalidParticles(
 // Workflow Functions
 // ---------------------------------------------------
 void initializeParticlesWithDuConstrains(
-	volatile _pso_hw_real *u_curr, 
+	volatile _pso_hw_real *u_curr 
 	//volatile _pso_hw_real *uss,
 
 	// _pso_hw_real _x[][_pso_Nu*_pso_n_U], 
 	// _pso_hw_real _y[][_pso_Nu*_pso_n_U], 
 	// _pso_hw_real _v[][_pso_Nu*_pso_n_U]
-	_pso_hw_real ** _x,
-	_pso_hw_real ** _y,
-	_pso_hw_real ** _v
+	// _pso_hw_real ** _x,
+	// _pso_hw_real ** _y,
+	// _pso_hw_real ** _v
 ){
 // INITIALIZATION OF PARTICLES WITH Delta u CONTRAINS FOR MPC
 #pragma HLS inline
@@ -537,9 +514,9 @@ void initializeParticlesWithDuConstrains(
 		        _pso_hw_real x_tmp = x_ant[k] + du_tmp; //random->read(); 
 		        // _pso_hw_real x_tmp = ( x_ant[k] + (-du_max[k]) ) + ((_pso_hw_real)2.0*du_max[k]) * rand_tmp; //random->read(); 
 				x_tmp = verifyControlConstrains(x_tmp, k);
-                _x[i][idx] = x_tmp;
-				_y[i][idx] = x_tmp;//uss_local[k];
-		        _v[i][idx] = init_v;
+                x[i][idx] = x_tmp;
+				y[i][idx] = x_tmp; // uss_local[k];
+		        v[i][idx] = init_v;
                 valid_particle[i] = 1;
 				x_ant[k] = x_tmp;
 				idx++;
@@ -583,7 +560,7 @@ void initializeParticles(
 void initializeLastBestKPSO(
 	_pso_hw_real volatile *last_best,
 	// _pso_hw_real _x[][_pso_Nu*_pso_n_U]
-	_pso_hw_real **_x,
+	// _pso_hw_real **_x,
 	uint8_t index
 ){
 #pragma HLS inline
@@ -594,11 +571,11 @@ void initializeLastBestKPSO(
 		_pso_hw_real x_local;
 		x_local = (last_best_tmp > x_max_first[i]) ? x_max_first[i] : last_best_tmp;
 		x_local = (last_best_tmp < x_min_first[i]) ? x_max_first[i] : last_best_tmp;
-		_x[index][i] = x_local;
+		x[index][i] = x_local;
 	}
 	
 	for (unsigned int i = n_U; i < (Nu*n_U); i++) {
-		_x[index][i] = last_best[i];			
+		x[index][i] = last_best[i];			
 	}
 }
 // ---------------------------------------------------
@@ -606,7 +583,7 @@ void initializeStableZero(
 //	_pso_hw_real *uss, 
 	_pso_hw_real *u_curr, 	
 	// _pso_hw_real _x[][_pso_Nu*_pso_n_U]
-	_pso_hw_real **_x,
+	// _pso_hw_real **_x,
 	uint8_t index
 ){
 #pragma HLS inline
@@ -625,7 +602,7 @@ void initializeStableZero(
 			x_tmp = (comp_tmp > du_max[i]) ? du_max[i] : x_tmp;
 			x_tmp = (comp_tmp < du_min[i]) ? du_min[i] : x_tmp;
 
-            _x[index][idx] = verifyControlConstrains(x_tmp, i);
+            x[index][idx] = verifyControlConstrains(x_tmp, i);
 			x_ant[i] = x_tmp;
 			idx++;
         }
@@ -635,8 +612,8 @@ void initializeStableZero(
 void evaluateFitnessAndDetectLocalBest(
 	// _pso_hw_real _x[][_pso_Nu*_pso_n_U], 
 	// _pso_hw_real _y[][_pso_Nu*_pso_n_U],
-	_pso_hw_real **_x,
-	_pso_hw_real **_y,
+	// _pso_hw_real **_x,
+	// _pso_hw_real **_y,
 
 	_pso_hw_real *x_curr_local,//[_pso_Nx],
 
@@ -656,9 +633,9 @@ void evaluateFitnessAndDetectLocalBest(
 #pragma UNROLL
 // #pragma HLS unroll factor=5 skip_exit_check
         //if(valid_particle[i] == 1){
-			current_system->nmpc_cost_function_topflow(x_curr_local, &_x[i][0], xref, &fx[i]);
+			current_system->nmpc_cost_function_topflow(x_curr_local, &x[i][0], xref, &fx[i]);
             if (fx[i] < f_ind[i]) {
-				memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(&_y[i][0], &_x[i][0]);
+				memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(&y[i][0], &x[i][0]);
                 f_ind[i] = fx[i];           
             }
         //}
@@ -710,9 +687,9 @@ void updateParticlesWithDuConstrains(
 	// _pso_hw_real *_x[][_pso_Nu*_pso_n_U], 
 	// _pso_hw_real *_y[][_pso_Nu*_pso_n_U], 
 	// _pso_hw_real *_v[][_pso_Nu*_pso_n_U]
-	_pso_hw_real **_x,
-	_pso_hw_real **_y,
-	_pso_hw_real **_v
+	// _pso_hw_real **_x,
+	// _pso_hw_real **_y,
+	// _pso_hw_real **_v
 ){
 #pragma HLS ALLOCATION type=function instances=rand_real limit=1 
 
@@ -734,13 +711,13 @@ void updateParticlesWithDuConstrains(
                 _pso_hw_real r1 = rand_real(); //random->read();
                 _pso_hw_real r2 = rand_real(); //random->read();
 
-	            _pso_hw_real v_tmp = _v[i][idx];
-	            _pso_hw_real x_tmp = _x[i][idx];
+	            _pso_hw_real v_tmp = v[i][idx];
+	            _pso_hw_real x_tmp = x[i][idx];
 	            // v = w*v + c1*r1*(y-x) + c2*r2*(global_min - x)
-				_pso_hw_real v_new = w*v_tmp + c1*r1*(_y[i][idx]-x_tmp) + c2*r2*(global_min[idx] - x_tmp);
+				_pso_hw_real v_new = w*v_tmp + c1*r1*(y[i][idx]-x_tmp) + c2*r2*(global_min[idx] - x_tmp);
 	            v_new = (v_new > max_v) ? max_v : v_new;
 	            v_new = (v_new < min_v) ? min_v : v_new;
-				_v[i][idx] = v_new;
+				v[i][idx] = v_new;
 	            
 				_pso_hw_real x_new = x_tmp + v_new;
 				_pso_hw_real x_tmp2 = 	(j==0) ? x_new : x_new - x_ant[k]; //x[i][idx]-x[i][idx-1];
@@ -748,7 +725,7 @@ void updateParticlesWithDuConstrains(
 				_pso_hw_real cmp_min = 	(j==0) ? x_min_first[k] : du_min[k];
 				x_new = (x_tmp2 > cmp_max) ? x_ant[k] + cmp_max : x_new;
 				x_new = (x_tmp2 < cmp_min) ? x_ant[k] + cmp_min : x_new;
-                _x[i][idx] = verifyControlConstrains(x_new, k);
+                x[i][idx] = verifyControlConstrains(x_new, k);
 
 				x_ant[k] = x_new;
 	            
