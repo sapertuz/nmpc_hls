@@ -126,18 +126,18 @@ public:
     // Constructing the vector of guessed control actions with respect to N and Nu
     split<_system_hw_real, _system_hw_real, _system_n_U>(control_guess, uu_1, uu_2);
     // Control Error
-    one_step_u_error((_system_hw_real *)Jui_out, Jui_in, uu_1);
+    one_step_u_error((_system_hw_real *)Jui_out, (_system_hw_real *)Jui_in, (_system_hw_real *)uu_1);
     // Predict Horizon
     one_step_prediction(local_next_state, current_state, uu_2);
     split<_system_hw_real, _system_hw_real, _system_Nx>(local_next_state, xx_1, (_system_hw_real *)next_state);
     // State Error
-    one_step_error((_system_hw_real *)Ji_out, i_step, Ji_in, xx_1, xref);
+    one_step_error((_system_hw_real *)Ji_out, i_step, (_system_hw_real *)Ji_in, xx_1, (_system_hw_real *)xref);
 }
 // ---------------------------------------------------
 	void nmpc_cost_function_topflow(
-        volatile _system_hw_real current_state[_system_Nx],
-        volatile _system_hw_real control_guess[_system_Nu*_system_n_U],
-        volatile _system_hw_real xref[_system_Nx*_system_Nh],
+        volatile _system_hw_real *current_state,
+        volatile _system_hw_real *control_guess,
+        volatile _system_hw_real *xref,
         _system_hw_real *J
     ){
 #pragma HLS interface mode=ap_fifo port=current_state   depth=_system_Nx
@@ -354,8 +354,8 @@ stage_4:
 protected:
     void memcpy_loop_checklastu(
         unsigned _i,
-        _system_hw_real _current_uu[_system_n_U], 
-        _system_hw_real _control_guess[_system_n_U]
+        _system_hw_real *_current_uu, 
+        _system_hw_real *_control_guess
     ){
 #pragma HLS inline
         if (_system_n_U*_i < _system_n_U*_system_Nu){
@@ -380,30 +380,25 @@ protected:
     }
 
     void one_step_error(
-        _system_hw_real Ji_out[_system_Nx],
+        _system_hw_real *Ji_out,
         unsigned int i_step,
-        volatile _system_hw_real Ji_in[_system_Nx],
-        volatile _system_hw_real x_hat[_system_Nx],
-        volatile _system_hw_real xref[_system_Nx]
+        _system_hw_real *Ji_in,
+        _system_hw_real *x_hat,
+        _system_hw_real *xref
     ){
 // #pragma HLS INLINE
         _system_hw_real penality;
         _system_hw_real current_x_hat;
         _system_hw_real current_x_ref;
-//        _system_hw_real Ji_local[_system_Nx], Ji_out_local[_system_Nx];
-//        memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_n_U>(Ji_local, Ji_in);
         for (unsigned j = 0; j < _system_Nx; ++j) {
 #pragma HLS PIPELINE II=11
-            //_system_hw_real tmp_err = normalize_angle(x_hat[l] - xref[l]);
             current_x_hat = x_hat[j];
             current_x_ref = xref[j];
             _system_hw_real tmp_err = (controlled_state[j] == 1) ? (current_x_hat - current_x_ref) : (_system_hw_real)0.0;
             _system_hw_real Q_local = (i_step == N-1)? Qf[j] : Q[j];
             penality = ((state_lower_limits[j] <= current_x_hat) && (current_x_hat <= state_upper_limits[j])) ? (_system_hw_real)Q_local : (_system_hw_real)1e4;
-//            Ji_out_local[j] = Ji_local[j] + penality*tmp_err*tmp_err;
             Ji_out[j] = Ji_in[j] + penality*tmp_err*tmp_err;
         }
-//        memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_n_U>(Ji_out, Ji_out_local);
 #ifdef DEBUG_SYSTEM
         std::cout << " State"; print_formatted_float_array(x_hat, _system_Nx, 2, 6);
         std::cout << std::endl;
@@ -420,17 +415,14 @@ protected:
 
     void one_step_u_error(
         _system_hw_real *Ji_out,
-        volatile _system_hw_real *Ji_in,
-        volatile _system_hw_real *uu
+        _system_hw_real *Ji_in,
+        _system_hw_real *uu
         // _system_hw_real uref[_system_n_U]
     ){
 // #pragma HLS INLINE
         _system_hw_real penality;
-//        _system_hw_real Ji_local[_system_n_U];
-//        memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_n_U>(Ji_local, Ji_in);
         for (unsigned j = 0; j < _system_n_U; ++j) {
 #pragma HLS pipeline II=9
-            //_system_hw_real tmp_err = normalize_angle(x_hat[l] - xref[l]);
             _system_hw_real current_uu = uu[j];
             _system_hw_real tmp_err = (current_uu - uss[j]);
             penality = ((u_min[j] <= current_uu) && (current_uu <= u_max[j])) ? R[j] : (_system_hw_real)1e4;
@@ -452,14 +444,9 @@ void J_error(
         volatile _system_hw_real *local_Jui,
         volatile _system_hw_real *local_Ji,
         
-        // volatile _system_hw_real *local_xref,
-
-        // volatile _system_hw_real *local_x_current,
         _system_hw_real *J
     ){
-    // x_ref_ptr = &xref[(N-1)*_system_Nx];
     // Weigthed Errors    
-    // _system_hw_real J_tmp1 = 0.0, J_tmp2 = 0.0;
 #pragma HLS DATAFLOW
 // #pragma HLS loop_merge 
 // #pragma HLS ALLOCATION operation instances=hmul limit=1
@@ -480,16 +467,11 @@ void J_error(
         Jui_acum += local_Jui[j];
     }
     J[0] = Ji_acum + Jui_acum;
-    // Ji_error(local_Ji, local_Jui, &J_tmp1);
-    // Jf_error(local_x_current, local_xref, &J_tmp2);
 #ifdef DEBUG_SYSTEM
     std::cout << "Ji = " << Ji_acum << std::endl;
     std::cout << "Ju = " << Jui_acum << std::endl;
 
-    // std::cout << "Jf = " << J_tmp2 << std::endl;
 #endif
-    // final_sum(J, J_tmp1, J_tmp2);
-    // return J;
 }
 
     void Ji_error(
@@ -541,10 +523,6 @@ void J_error(
             _system_hw_real J_mul = Qf[j]*Jf;
             J_local += J_mul;
         }
-//         Jf_sum_loop: for (unsigned j = 0; j < _system_Nx; ++j) {
-// #pragma HLS pipeline off
-//             J_local += J_mul[j];
-//         }
         J[0] = J_local;
     }
 
@@ -563,9 +541,6 @@ void J_error(
         for (unsigned i = 0; i < N; ++i) {
         	memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_n_U>(current_uu, (_system_hw_real *)&uu[_system_n_U*i]);
 			one_step_u_error(Jui_buff, Jui_buff_ant, current_uu);
-            // one_step_u_error(Jui_buff, Jui, current_uu);
-            // one_step_u_error(Jui_buff, Jui_buff, &uu[_system_n_U*i]);
-            // memcpy_loop_enclosed<_system_hw_real, _system_hw_real, _system_n_U>(&uu[_system_n_U*i], current_uu);
             memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_n_U>(Jui_buff_ant, Jui_buff);
         }
         memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_n_U>(Jui, Jui_buff_ant);
@@ -578,12 +553,8 @@ void J_error(
         _system_hw_real *final_x,
         _system_hw_real *final_xref
         ){
-// #pragma HLS INLINE
 #pragma HLS allocation function instances=one_step_error limit=1 
         _system_hw_real current_x[_system_Nx], current_xref[_system_Nx]; 
-// #pragma HLS STREAM variable=current_xref depth=8
-// //#pragma HLS data_pack variable=current_xref
-// #pragma HLS RESOURCE variable=current_xref core=FIFO_LUTRAM
         _system_hw_real Ji_buff[_system_Nx], Ji_buff_ant[_system_Nx]; // = 0.0;
 #ifdef __VITIS_HLS__
 #pragma HLS bind_storage variable=Ji_buff type=FIFO impl=LUTRAM
@@ -592,9 +563,6 @@ void J_error(
 #pragma HLS bind_storage variable=current_xref type=FIFO impl=LUTRAM
 #endif
 
-// #pragma HLS STREAM variable=Ji_buff depth=8
-// //#pragma HLS data_pack variable=Ji_buff
-// #pragma HLS RESOURCE variable=Ji_buff core=FIFO_LUTRAM
         memset_loop<_system_hw_real>(Ji_buff_ant, (const _system_hw_real)0.0, _system_Nx);
         for (unsigned i = 0; i < N-1; ++i) {
 #pragma HLS PIPELINE off
@@ -613,8 +581,6 @@ void J_error(
         memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_Nx>(final_x, (_system_hw_real *)&xref[_system_Nx*(N-1)]);
         memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_Nx>(final_xref, (_system_hw_real *)&x_horizon[_system_Nx*(N-1)]);
         memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_Nx>(Ji, Ji_buff_ant);
-//        memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_Nx>(final_x, current_x);
-//        memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_Nx>(final_xref, current_xref);
         	
     }
 
@@ -625,16 +591,13 @@ void J_error(
         ){
         _system_hw_real x_hat_out[_system_Nx];
         _system_hw_real x_hat_in[_system_Nx];
-// #pragma HLS STREAM variable=x_hat depth=8
-// //#pragma HLS data_pack variable=x_hat
+
 #pragma HLS bind_storage variable=x_hat_out type=FIFO impl=LUTRAM
 #pragma HLS bind_storage variable=x_hat_in type=FIFO impl=LUTRAM
         memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_Nx>(x_hat_in, (_system_hw_real *)x_initial);
         for (unsigned i = 0; i < N; ++i) {
 #pragma HLS pipeline off
-			// one_step_prediction(x_buffer, current_x_hat, current_uu);
             one_step_prediction(x_hat_out, x_hat_in, &uu[_system_n_U*i]);
-            // memcpy_loop_rolled<_system_hw_real, _system_hw_real, _system_Nx>(&x_horizon[_system_Nx*(i)], x_hat);
             split<_system_hw_real, _system_hw_real, _system_Nx>(x_hat_out, &x_horizon[_system_Nx*(i)], x_hat_in);
         }
     }

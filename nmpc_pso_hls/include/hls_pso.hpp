@@ -71,15 +71,9 @@ protected:
 
 	// Particles
 #ifdef __SYNTHESIS__
-	_pso_hw_real x[n_S][Nu*n_U];
-#pragma HLS bind_storage variable=x type=RAM_T2P impl=BRAM
-#pragma HLS stream variable=x type=shared
-	_pso_hw_real y[n_S][Nu*n_U];
-#pragma HLS bind_storage variable=y type=RAM_T2P impl=BRAM
-#pragma HLS stream variable=y type=shared
-	_pso_hw_real v[n_S][Nu*n_U];
-#pragma HLS bind_storage variable=v type=RAM_T2P impl=BRAM
-#pragma HLS stream variable=v type=shared
+	_pso_hw_real x[_pso_n_S][_pso_Nu*_pso_n_U];
+	_pso_hw_real y[_pso_n_S][_pso_Nu*_pso_n_U];
+	_pso_hw_real v[_pso_n_S][_pso_Nu*_pso_n_U];
 #else
 	//_pso_hw_real bestfitness[_pso_maxiter];
 	//_pso_hw_real global_min[Nu*n_U];
@@ -169,6 +163,14 @@ int execute(
 
 #pragma HLS bind_storage variable=x_max_first type=RAM_2P impl=LUTRAM
 #pragma HLS bind_storage variable=x_min_first type=RAM_2P impl=LUTRAM
+
+#pragma HLS bind_storage variable=x type=RAM_T2P impl=BRAM
+#pragma HLS stream variable=x type=shared
+#pragma HLS bind_storage variable=y type=RAM_T2P impl=BRAM
+#pragma HLS stream variable=y type=shared
+#pragma HLS bind_storage variable=v type=RAM_T2P impl=BRAM
+#pragma HLS stream variable=v type=shared
+
     // Update sensor read
     //static System * controled_system = new ModelState();
     //controled_system->setState(x_curr);
@@ -308,7 +310,7 @@ int execute(
     
     J[0] = bestfitness[_pso_maxiter-1];
 
-#ifndef __SINTHESYS__
+#ifndef __SYNTHESIS__
     if(x != NULL) free(x);
     if(y != NULL) free(y);
     if(v != NULL) free(v);
@@ -628,12 +630,13 @@ void evaluateFitnessAndDetectLocalBest(
 // #pragma HLS interface ap_fifo port=xss
 
 	// Evaluates fitness and local detection
-    loop_1: for(unsigned int i = 0; i < n_S; i++) {
+    loop_pso_evalfit: for(unsigned int i = 0; i < n_S; i++) {
         // std::cout << std::endl;
 #pragma UNROLL
 // #pragma HLS unroll factor=5 skip_exit_check
         //if(valid_particle[i] == 1){
-			current_system->nmpc_cost_function_topflow(x_curr_local, &x[i][0], xref, &fx[i]);
+			// current_system->nmpc_cost_function_topflow(x_curr_local, &x[i][0], xref, &fx[i]);
+			current_system->nmpc_cost_function_topflow(x_curr_local, x[i], xref, &fx[i]);
             if (fx[i] < f_ind[i]) {
 				memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(&y[i][0], &x[i][0]);
                 f_ind[i] = fx[i];           
