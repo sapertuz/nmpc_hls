@@ -3,10 +3,10 @@
 /************************** Variable Definitions *****************************/
 
 // Model Core Generator
-top_model_t my_model;
-top_model_t *my_model_ptr = &my_model;
+// top_model_t my_model;
+// top_model_t *my_model_ptr = &my_model;
 // System Core Generator
-typedef System<_pso_real,top_model_t,_Nh, _Nx, _n_U, _Nu> _system_t; 
+typedef System<_pso_real,_Nh, _Nx, _n_U, _Nu> _system_t; 
 _system_t _hw_system(
     _u_max, 
     _u_min, 
@@ -19,8 +19,8 @@ _system_t _hw_system(
     _R, 
     _uss, 
     _Ts
-    ,
-    my_model_ptr
+    // ,
+    // my_model
 );
 // Pseudo Random Core Generator
 typedef pseudoRand_gen<_pso_real, _n_S> _randCore_t;
@@ -45,8 +45,8 @@ T_solver my_solver(
     _du_max,
     _uss
     ,
-    _hw_system_ptr,
-    _hw_rand_core_ptr
+    _hw_system,
+    _hw_rand_core
 );
 // }
 

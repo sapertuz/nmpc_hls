@@ -16,8 +16,8 @@ set module_file "hls_nonlinear_solver"
 set main_name "main_hls_pso" 
 
 set arg_str "${workspace}/config/sniffbot/project_config.txt ${workspace}/config/sniffbot/simulation_config_ring.txt"
-set c_flags "-DSNIFFBOT_CONFIG -DPSO_CONFIG -DUSE_FAST_SIN_COS -I${incl_path} -std=c++11 -Wno-unknown-pragmas"
-set csim_tb_flags "-DSNIFFBOT_CONFIG -DPSO_CONFIG -I${incl_path} -std=c++11  -DDEBUG_FILE -DPRINT_TO_TERMINAL -Wno-unknown-pragmas"
+set c_flags "-DSNIFFBOT_CONFIG -DPSO_CONFIG -DUSE_FAST_SIN_COS -I${incl_path} -I${incl_path}/models -std=c++11 -Wno-unknown-pragmas"
+set csim_tb_flags "-DSNIFFBOT_CONFIG -DPSO_CONFIG -I${incl_path} -I${incl_path}/models -std=c++11  -DDEBUG_FILE -DPRINT_TO_TERMINAL -Wno-unknown-pragmas"
 
 open_project $prj_name
 

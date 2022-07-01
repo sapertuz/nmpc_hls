@@ -11,10 +11,10 @@
 // #else
 // typedef float _real;
 // #endif
-
-#include "aux_functions.hpp"
-#include "hls_system.hpp"
 #include "config.hpp"
+#include "aux_functions.hpp"
+
+#include "hls_system.hpp"
 
 typedef _hw_top_real _system_real;
 
@@ -158,8 +158,8 @@ float x_ref[] = {
 
 #endif
 
-top_model_t my_model;
-top_model_t *my_model_ptr = &my_model;
+// top_model_t my_model;
+// top_model_t *my_model_ptr = &my_model;
 
 float cost_function_wrapper(
     volatile float *control_guess,
@@ -178,7 +178,7 @@ float cost_function_wrapper(
 #pragma HLS INTERFACE m_axi depth=12  port=current_state offset=slave bundle=input
 
 
-    typedef System<_system_real, top_model_t, _Nh, _Nx, _n_U, _Nu> T_system;
+    typedef System<_system_real, _Nh, _Nx, _n_U, _Nu> T_system;
     T_system current_system(
         _u_max, 
         _u_min, 
@@ -191,8 +191,8 @@ float cost_function_wrapper(
         _R, 
         _uss,
         _Ts
-        ,
-        my_model_ptr
+        // ,
+        // my_model
         );
 
     _system_real local_control_guess[_n_U*_Nu];

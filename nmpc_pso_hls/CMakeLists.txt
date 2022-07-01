@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -DDEBUG -DDEBUG_FILE -DPRINT_TO_TERMINAL -DSNIFFBOT_CONFIG -DPSO_CONFIG")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -DDEBUG -DDEBUG_FILE -DPRINT_TO_TERMINAL -DSNIFFBOT_CONFIG -DPSO_CONFIG -DSYNTH_RAND")
 set(CMAKE_BUILD_TYPE "Debug")
 
 # Configure Paths
@@ -21,7 +21,8 @@ foreach(exec ${executables_list})
     target_include_directories(${PROJECT_NAME} PUBLIC
         ${PROJECT_BINARY_DIR})
     target_include_directories(${PROJECT_NAME} PRIVATE
-        ${INCLUDE_FOLDER})
+        ${INCLUDE_FOLDER}
+        ${INCLUDE_FOLDER}/models)
     target_link_libraries(${PROJECT_NAME} PRIVATE 
         m)
 endforeach()
@@ -36,6 +37,7 @@ add_executable(${exec} ${SOURCE_DIR}/${exec}.cpp
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${PROJECT_BINARY_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${INCLUDE_FOLDER})
+    ${INCLUDE_FOLDER}
+    ${INCLUDE_FOLDER}/models)
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     m)

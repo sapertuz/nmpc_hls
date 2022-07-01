@@ -6,6 +6,7 @@
 
 #include "aux_functions.hpp"
 #include "config.hpp"
+#include "hls_model.hpp"
 
 // #ifdef __SYNTHESIS__
 // #include "hls_math.h"
@@ -96,7 +97,7 @@ void model_wrapper(
 #pragma HLS INTERFACE m_axi depth=12 port=state     offset=slave bundle=input
 #pragma HLS INTERFACE m_axi depth=12 port=state_dot offset=slave bundle=output
 
-    top_model_t current_model;
+    // top_model_t current_model;
 
     _model_real local_state_dot[_Nx];
     _model_real local_state[_Nx];
@@ -105,7 +106,7 @@ void model_wrapper(
     reg_local_st: memcpy_loop_rolled<_model_real, float, _Nx>(local_state, (float *)state);
     reg_local_u_guess: memcpy_loop_rolled<_model_real, float, _n_U>(local_u_guess, (float *)u_guess);
 
-    current_model.model(local_state_dot, local_state, local_u_guess);
+    __model(local_state_dot, local_state, local_u_guess);
 
     reg_st_dot: memcpy_loop_rolled<float, _model_real, _Nx>((float*)state_dot, local_state_dot);
     

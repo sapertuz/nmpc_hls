@@ -8,6 +8,7 @@
 
 // #include "config.hpp"
 #include "aux_functions.hpp"
+#include "hls_model.hpp"
 //#include "hls_inverted_pendulum.hpp"
 
 // #define DEBUG_SYSTEM
@@ -19,7 +20,7 @@
 
 template <
     class _system_hw_real,
-    class _system_model_t,
+//    class _system_model_t,
     unsigned _system_Nh,
     unsigned _system_Nx,
     unsigned _system_n_U,
@@ -68,7 +69,7 @@ protected:
     // _system_hw_real ddu_max[_system_n_U];
     // _system_hw_real acc_max[_system_n_U];
     // _system_hw_real acc_min[_system_n_U];
-    _system_model_t *model_ptr;
+//    _system_model_t model_ptr;
 public:
     constexpr System(
         const _system_hw_real __u_max[_system_n_U],
@@ -82,14 +83,15 @@ public:
         const _system_hw_real __R[_system_n_U],
         const _system_hw_real __uss[_system_n_U],
         const _system_hw_real __Ts
-        ,
-        _system_model_t* __model_ptr
+        // ,
+        // _system_model_t __model_ptr
     ) : Ts(__Ts), Ts_2(__Ts*(_system_hw_real)0.5), Ts_6(__Ts*(_system_hw_real)0.1666666667),
         uss(__uss), u_max(__u_max), u_min(__u_min), du_max(__du_max),
         controlled_state(__controlled_state), 
         state_upper_limits(__state_upper_limits), state_lower_limits(__state_lower_limits),
-        Q(__Q), Qf(__Qf), R(__R),
-        model_ptr(__model_ptr)
+        Q(__Q), Qf(__Qf), R(__R)
+        // ,
+        // model_ptr(__model_ptr)
     {};
 
 
@@ -376,7 +378,7 @@ protected:
 // #pragma HLS interface mode=ap_fifo port=control     depth=_system_n_U*2
 // #pragma HLS pipeline off
         //model_inverted_pendulum<_system_hw_real, _system_Nx, _system_n_U>(state_dot, state, control);
-        model_ptr->model(state_dot, state, control);
+        __model(state_dot, state, control);
     }
 
     void one_step_error(

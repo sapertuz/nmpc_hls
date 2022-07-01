@@ -8,7 +8,6 @@ set ip_path "/home/chello/Documents/Vivado_WS/vitis_ip_repo"
 set prj_name nmpc_hls_model
 set prj_top model_wrapper
 
-set ip_path "/home/chello/Documents/Vivado_WS/vitis_ip_repo"
 set workspace [pwd]
 set workspace [file dirname $workspace]
 
@@ -16,16 +15,16 @@ set src_path ${workspace}/src
 set incl_path ${workspace}/include
 set main_name "main_hls_model" 
 
-set c_flags "-DSNIFFBOT_CONFIG -DUSE_FAST_SIN_COS -I${incl_path} -std=c++11 -Wno-unknown-pragmas"
-set csim_tb_flags "-DSNIFFBOT_CONFIG -I${incl_path} -std=c++11 -Wno-unknown-pragmas"
+set c_flags "-DSNIFFBOT_CONFIG -DUSE_FAST_SIN_COS -I${incl_path} -I${incl_path}/models -std=c++11 -Wno-unknown-pragmas"
+set csim_tb_flags "-DSNIFFBOT_CONFIG -I${incl_path} -I${incl_path}/models -std=c++11 -Wno-unknown-pragmas"
 
 open_project $prj_name
 set_top $prj_top
 
 add_files $src_path/$main_name.cpp -cflags $c_flags -csimflags $csim_tb_flags
-foreach file [glob -dir $incl_path *.hpp] {
-    add_files $file
-}
+# foreach file [glob -dir $incl_path *.hpp] {
+#     add_files $file
+# }
 
 add_files -tb ${src_path}/${main_name}.cpp -cflags $c_flags -csimflags $csim_tb_flags
 

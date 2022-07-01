@@ -127,17 +127,6 @@ const _hw_top_real rand_max = 1.0;
     const _hw_top_real _tr[] =  {10, 10, 10, 0, 0, 8, 0, 0, 0, 0, 0, 0};
 #endif
 
-#ifdef INVERTED_PENDULUM_CONFIG
-#include "hls_inverted_pendulum.hpp"
-typedef model_inverted_pendulum<_hw_top_real> top_model_t;
-#elif defined(SNIFFBOT_CONFIG)
-#include "hls_sniffbot.hpp"
-typedef model_sniffbot<_hw_top_real> top_model_t;
-#elif defined(PANDA_CONFIG)
-#include "hls_panda.hpp"
-typedef model_panda<_hw_top_real> top_model_t;
-#endif
-
 #if defined(_POSIX_MONOTONIC_CLOCK)
 /*  The identifier for the system-wide monotonic clock, which is defined
  *  as a clock whose value cannot be set via clock_settime() and which

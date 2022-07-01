@@ -304,10 +304,10 @@ int main(int argc, char ** argv){
 //	}
     std::cout << "- Loaded all." << std::endl;
 
-    top_model_t my_sim_model;
-    top_model_t *my_sim_model_ptr = &my_sim_model;
+    // top_model_t my_sim_model;
+    // top_model_t *my_sim_model_ptr = &my_sim_model;
 
-    typedef System<float, top_model_t, _Nh, _Nx, _n_U, _Nu> T_sim_system;
+    typedef System<float, _Nh, _Nx, _n_U, _Nu> T_sim_system;
     T_sim_system current_system(
         (float *)_u_max,
         (float *)_u_min, 
@@ -320,8 +320,6 @@ int main(int argc, char ** argv){
         (float *)_R, 
         (float *)_uss,
         (float)_Ts
-        ,
-        my_sim_model_ptr
         );
 
     int iter = 0;

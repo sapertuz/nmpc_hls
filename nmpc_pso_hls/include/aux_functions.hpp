@@ -17,7 +17,6 @@ template<typename float_type> void print_formatted_float_array(const float_type 
     }
 }
 
-
 template<typename array_type_dest, typename array_type_src, unsigned n> void memcpy_loop_unrolled
     (array_type_dest dest[n], const array_type_src src[n]){
 #pragma HLS inline
@@ -50,6 +49,7 @@ template<typename array_type_dest, typename array_type_src, unsigned n> void mem
 template<typename data_type> void memset_loop
     (data_type *array, const data_type data, unsigned n){
     // Copy contents of src[] to dest[]
+#pragma HLS inline
     for (unsigned short i=0; i<n; i++){
 #pragma HLS unroll
         array[i] = data;
