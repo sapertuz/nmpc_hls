@@ -4,8 +4,8 @@
 //#define DEBUG_HLS
 
 //#include "config.hpp"
-// #include "hls_system.hpp"
-// #include "hls_pseudorand.hpp"
+#include "hls_system.hpp"
+#include "hls_pseudorand.hpp"
 #include "aux_functions.hpp"
 
 #define H_MAX 60000.0f
@@ -23,8 +23,8 @@
 
 template<
     class _pso_hw_real,
-    class _pso_randCore_t,
-    class _pso_system_t,
+    // class _pso_randCore_t,
+    // class _pso_system_t,
 	unsigned _pso_n_S,
 	unsigned _pso_maxiter,
     unsigned _pso_Nh,
@@ -81,7 +81,6 @@ protected:
 	_pso_hw_real *y;
 	_pso_hw_real *v;
 #endif
-
 	int valid_particle[_pso_n_S];
 	int number_of_active_particles;
 
@@ -99,8 +98,14 @@ protected:
 	const unsigned int part_S = Nu*n_U;
 	// _pso_hw_real u_from_parameters[_N*_pso_n_U];
 
-	_pso_system_t current_system;
-	_pso_randCore_t randGen;
+	// _pso_system_t current_system;
+	// _pso_randCore_t randGen;
+
+	const float pso_rand_min = 0.0f;
+	const float pso_rand_max = 1.0f;
+	
+	// Pseudo Random Core Generator
+	typedef pseudoRand_gen _pso_randCore_t;
 public:
 // Init Execute
 constexpr PSO(
@@ -127,19 +132,21 @@ constexpr PSO(
 	const _pso_hw_real _Ts,
 	const int _rand_seed[_pso_n_S]
 */
-	,
-	_pso_system_t __current_system,
-	_pso_randCore_t __randGen
+	// ,
+	// _pso_system_t __current_system,
+	// _pso_randCore_t __randGen
 	) : max_v(__max_v), min_v(-__max_v), w0(__w0), wf(__wf), 
 		slope(__slope), c1(__c1), c2(__c2),
 		stable_zero(__stable_zero), init_v(__max_v*0.1),
-		u_min(__u_min), u_max(__u_max), du_max(__du_max), uss_local(__uss),
+		u_min(__u_min), u_max(__u_max), du_max(__du_max), uss_local(__uss)
+		// ,
 /*		
 		Ts(_Ts), controlled_state(_controlled_state), 
         state_upper_limits(_state_upper_limits), state_lower_limits(_state_lower_limits),
         Q(_Q), Qf(_Qf), R(_R), 
 */
-		randGen(__randGen), current_system(__current_system)
+		// randGen(__randGen)
+		// , current_system(__current_system)
 {
 }
 
@@ -324,8 +331,10 @@ int execute(
 	return k;
 }
 
+private:
 // Misc Functions
 // ---------------------------------------------------
+/*
 _pso_hw_real rand_real(unsigned core){
 #if (defined(__SYNTHESIS__) || defined(SYNTH_RAND))
 	_pso_hw_real return_value = randGen.rand_num(core);
@@ -334,9 +343,16 @@ _pso_hw_real rand_real(unsigned core){
 #endif
 	return return_value;
 }
+*/
+
+
 _pso_hw_real rand_real(){
 #if (defined(__SYNTHESIS__) || defined(SYNTH_RAND))
-	_pso_hw_real return_value = randGen.rand_num(0);
+	_pso_randCore_t randGen(
+		(const float)pso_rand_min, 
+		(const float)pso_rand_max
+	);
+	_pso_hw_real return_value = randGen.rand_num();
 #else
 	_pso_hw_real return_value = (_pso_hw_real)rand()/(_pso_hw_real)RAND_MAX;
 #endif
@@ -634,14 +650,30 @@ void evaluateFitnessAndDetectLocalBest(
     loop_pso_evalfit: for(unsigned int i = 0; i < n_S; i++) {
         // std::cout << std::endl;
 #pragma UNROLL
+		System<_pso_hw_real,_Nh, _Nx, _n_U, _Nu> 
+		current_system(
+			_u_max, 
+			_u_min, 
+			_du_max,
+			_controlled_state,
+			_state_upper_limits, 
+			_state_lower_limits, 
+			_Q, 
+			_Qf, 
+			_R, 
+			_uss, 
+			_Ts
+			// ,
+			// my_model
+		);
 // #pragma HLS unroll factor=5 skip_exit_check
         //if(valid_particle[i] == 1){
-			// current_system->nmpc_cost_function_topflow(x_curr_local, &x[i][0], xref, &fx[i]);
-			current_system.nmpc_cost_function_topflow(x_curr_local, &x[i*part_S], xref, &fx[i]);
-            if (fx[i] < f_ind[i]) {
-				memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(&y[i*part_S], &x[i*part_S]);
-                f_ind[i] = fx[i];           
-            }
+		// current_system->nmpc_cost_function_topflow(x_curr_local, &x[i][0], xref, &fx[i]);
+		current_system.nmpc_cost_function_topflow(x_curr_local, &x[i*part_S], xref, &fx[i]);
+		if (fx[i] < f_ind[i]) {
+			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(&y[i*part_S], &x[i*part_S]);
+			f_ind[i] = fx[i];           
+		}
         //}
     }
     // std::cout << std::endl;

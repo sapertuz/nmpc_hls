@@ -26,10 +26,12 @@ set_top $prj_top
 #     add_files $file
 # }
 
-add_files ${incl_path}/${module_file}.hpp -cflags $c_flags -csimflags $csim_tb_flags
+# add_files ${incl_path}/${module_file}.hpp -cflags $c_flags -csimflags $csim_tb_flags
 add_files ${src_path}/${module_file}.cpp -cflags $c_flags -csimflags $csim_tb_flags
+add_files ${src_path}/hls_pseudorand.cpp -cflags $c_flags -csimflags $csim_tb_flags
 add_files -tb ${src_path}/${main_name}.cpp -cflags $csim_tb_flags -csimflags $csim_tb_flags
 add_files -tb ${src_path}/aux_functions.cpp -cflags $csim_tb_flags -csimflags $csim_tb_flags
+
 
 open_solution "solution_system" -flow_target vivado
 

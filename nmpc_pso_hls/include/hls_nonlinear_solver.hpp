@@ -3,13 +3,13 @@
 
 /***************************** Include Files *********************************/
 #include "config.hpp"
-#include "hls_pseudorand.hpp"
-#include "hls_system.hpp"
+// #include "hls_pseudorand.hpp"
+// #include "hls_system.hpp"
 #include "hls_pso.hpp"
 
 /************************** Class Definitions ****************************/
 
-typedef _hw_top_real _pso_real;
+// typedef _hw_top_real _pso_real;
 
 int nonlinear_solver_wrapper(
     volatile float *x_curr,//[_Nx], 
