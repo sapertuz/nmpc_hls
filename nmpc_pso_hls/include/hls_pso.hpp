@@ -196,7 +196,7 @@ int execute(
 #ifdef __SYNTHESIS__
 	_pso_hw_real u_curr_local[n_U];
 #pragma HLS bind_storage variable=u_curr_local type=RAM_2P impl=LUTRAM
-#pragma HLS stream variable=u_curr_local type=shared
+// #pragma HLS stream variable=u_curr_local type=shared
 
 	_pso_hw_real x_curr_local[Nx];
 #pragma HLS bind_storage variable=x_curr_local type=RAM_2P impl=LUTRAM
@@ -231,32 +231,20 @@ int execute(
 	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(uref_local, 	(_pso_hw_real *)uref);
 	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(xss_local, 		(_pso_hw_real *)xss);
 
-/*
-	_pso_hw_real uss_local[n_U];
-#pragma HLS bind_storage variable=uss_local type=RAM_2P impl=LUTRAM
-#pragma HLS stream variable=uss_local type=shared
-	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, n_U>(uss_local, uss);
-*/	
 	w = w0;
 	calculate_du_min();
 
 	initializeConstrains(u_curr_local);
     initializeParticlesWithDuConstrains(u_curr_local);
 
-//#if (n_U > 1)
-//    if((iteration == 0) && (n_U > 1)) {
-	equalizeParticles(iteration);
-//    }        
-//#endif
+	// equalizeParticles(iteration);
 
-//    if ((kpso == 1) && (iteration > 0)) {
     initializeLastBestKPSO(last_best, particle_last_best);
-//    }
-//    if (stable_zero == 1) {
+
 	initializeStableZero(u_curr_local, particle_stable_zero);
-//    } 
 
     initializeBestLocalFitness();
+
 	// ITERATIVE PROCESS
 	unsigned int k = 0;  // index of iteration
 
@@ -295,22 +283,12 @@ int execute(
 		std::cout << std::endl;
 #endif
         //detectInvalidParticles(k, best_pos);
-/*
-		// STOP CRITERIA
-		if(stop_criteria) {
-			if (k > stop_criteria) {
-			    if ((bestfitness[k-stop_criteria]-bestfitness[k]) < threshold)
-			        break;
-			}
-		}
-        if(number_of_active_particles < 2){
-            break;
-        }
-*/
+
 		k++;
 		w+= slope;
 	}
-    
+
+
 	// Return best value
     for (unsigned int i = 0; i < Nu*n_U; ++i) {
         new_best[i] = global_min[i];
@@ -385,7 +363,7 @@ void initializeConstrains(
 ){
 	// Initialize constrains based on current state
 #pragma HLS inline
-	for (unsigned int i = 0; i < n_U; ++i){
+	initializeConstrains_loop: for (unsigned int i = 0; i < n_U; ++i){
 		_pso_hw_real u_curr_tmp = u_curr[i];
 
         _pso_hw_real x_max_first_temp = u_curr_tmp + du_max[i]; //controled_system->acc_max[i];
@@ -398,7 +376,8 @@ void initializeConstrains(
 // ---------------------------------------------------
 void calculate_du_min(
 ){
-	for (unsigned i = 0; i < n_U; i++)
+#pragma HLS inline
+	calculate_du_min_loop: for (unsigned i = 0; i < n_U; i++)
 	{
 		du_min[i] = -du_max[i];
 	}
@@ -444,7 +423,7 @@ void equalizeParticles(
 	_pso_hw_real x_tmp;
 	if (iteration == 0){	
     for (unsigned int i = 0; i < n_S; ++i) {
-#pragma UNROLL
+// #pragma UNROLL
 		for (unsigned int k = 1; k < Nu; ++k) {
 	 	   	int idx1 = k*n_U;
 	 	   	int idx2 = 0;
@@ -471,7 +450,7 @@ _pso_hw_real verifyControlConstrains(
 
 	return return_value;
 }
-
+#ifdef PSO_CANON
 // ---------------------------------------------------
 void detectInvalidParticles(
 	int iter, 
@@ -499,7 +478,7 @@ void detectInvalidParticles(
     }
 
 }
-
+#endif
 // Workflow Functions
 // ---------------------------------------------------
 void initializeParticlesWithDuConstrains(
@@ -514,7 +493,7 @@ void initializeParticlesWithDuConstrains(
 	// _pso_hw_real ** _v
 ){
 // INITIALIZATION OF PARTICLES WITH Delta u CONTRAINS FOR MPC
-#pragma HLS inline
+//#pragma HLS inline
 #pragma HLS ALLOCATION instances=rand_real limit=1 function
 #pragma HLS ALLOCATION instances=hmul limit=1 operation
 #pragma HLS ALLOCATION instances=hadd limit=1 operation
@@ -522,7 +501,7 @@ void initializeParticlesWithDuConstrains(
 
 	_pso_hw_real x_ant[n_U];
 
-	for (unsigned int i = 0; i < n_S; ++i) {
+	initializeS_du_loop_top:for (unsigned int i = 0; i < n_S; ++i) {
 		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant, (_pso_hw_real *)u_curr);
 		for (unsigned int j = 0; j < Nu; ++j) {
 			for (unsigned int k = 0; k < n_U; ++k) {
@@ -544,6 +523,7 @@ void initializeParticlesWithDuConstrains(
 	}
 }
 
+#ifdef PSO_CANON
 // ---------------------------------------------------
 void initializeParticles(
     // _pso_hw_real _x[][_pso_Nu*_pso_n_U], 
@@ -574,7 +554,7 @@ void initializeParticles(
         valid_particle[i] = 1;
     }
 }
-
+#endif
 // ---------------------------------------------------
 void initializeLastBestKPSO(
 	_pso_hw_real volatile *last_best,
@@ -582,7 +562,7 @@ void initializeLastBestKPSO(
 	// _pso_hw_real **_x,
 	uint8_t index
 ){
-#pragma HLS inline
+// #pragma HLS inline
 	// Uses KPSO (best last position)
 
 	for (unsigned int i = 0; i < n_U; i++){
@@ -605,7 +585,7 @@ void initializeStableZero(
 	// _pso_hw_real **_x,
 	uint8_t index
 ){
-#pragma HLS inline
+// #pragma HLS inline
 // Starts one particle with all Zeros for 
 // stable response after equilibrium is reached
     int idx;
@@ -649,7 +629,7 @@ void evaluateFitnessAndDetectLocalBest(
 	// Evaluates fitness and local detection
     loop_pso_evalfit: for(unsigned int i = 0; i < n_S; i++) {
         // std::cout << std::endl;
-#pragma UNROLL
+// #pragma UNROLL
 		System<_pso_hw_real,_Nh, _Nx, _n_U, _Nu> 
 		current_system(
 			_u_max, 
@@ -670,6 +650,7 @@ void evaluateFitnessAndDetectLocalBest(
         //if(valid_particle[i] == 1){
 		// current_system->nmpc_cost_function_topflow(x_curr_local, &x[i][0], xref, &fx[i]);
 		current_system.nmpc_cost_function_topflow(x_curr_local, &x[i*part_S], xref, &fx[i]);
+		// fx[i] = rand_real();
 		if (fx[i] < f_ind[i]) {
 			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(&y[i*part_S], &x[i*part_S]);
 			f_ind[i] = fx[i];           
@@ -680,6 +661,7 @@ void evaluateFitnessAndDetectLocalBest(
 
 }
 // ---------------------------------------------------
+#ifdef PSO_CANON
 void updateParticles(
 //	_pso_hw_real global_min[],
 
@@ -716,6 +698,7 @@ void updateParticles(
         } // End FOR k
     } // END FOR i
 }
+#endif
 // ---------------------------------------------------
 void updateParticlesWithDuConstrains(
 //	_pso_hw_real global_min[],
@@ -732,7 +715,7 @@ void updateParticlesWithDuConstrains(
 	// Update particles
 	_pso_hw_real x_ant[n_U];
     for (unsigned int i = 0; i < n_S; ++i) {
-#pragma UNROLL
+// #pragma UNROLL
 #pragma HLS ALLOCATION type=operation instances=hmul 	  limit=1 
 #pragma HLS ALLOCATION type=operation instances=hadd 	  limit=1 
 #pragma HLS ALLOCATION type=operation instances=hsub 	  limit=1 
