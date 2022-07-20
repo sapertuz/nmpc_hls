@@ -31,23 +31,7 @@
 // Nonlinear PSO Solver
 // _system_t *_hw_system_ptr = &_hw_system;
 // _randCore_t *_hw_rand_core_ptr = &_hw_rand_core;
-typedef PSO<_hw_top_real, _n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
-T_solver my_solver(
-    _stable_zero,
-    _max_v,
-    _w0,
-    _wf,
-    _slope,
-    _c1,
-    _c2,
-    _u_min,
-    _u_max,
-    _du_max,
-    _uss
-    // ,
-    // _hw_system,
-    // _hw_rand_core
-);
+
 
 /*****************************************************************************/
 /**
@@ -63,43 +47,57 @@ int nonlinear_solver_wrapper(
     int iteration, 
     volatile float *last_best,//[_Nu*_n_U], 
     volatile float *xref,//[_Nu*_Nx], 
-    volatile float *uref,//[_n_U], 
-    volatile float *xss,//[_Nx],
-    volatile float *uss,//[_n_U], 
+    // volatile float *uref,//[_n_U], 
+    // volatile float *xss,//[_Nx],
+    // volatile float *uss,//[_n_U], 
     
     float *new_best,//[_Nu*_n_U],
     float *J
 ){
-#pragma HLS INTERFACE s_axilite port=return         bundle=control
+#pragma HLS INTERFACE mode=s_axilite    port=iteration  bundle=control
+#pragma HLS INTERFACE mode=s_axilite    port=J          bundle=control
 
-#pragma HLS INTERFACE s_axilite port=x_curr         bundle=control
-#pragma HLS INTERFACE s_axilite port=u_curr         bundle=control
-#pragma HLS INTERFACE s_axilite port=iteration      bundle=control
-#pragma HLS INTERFACE s_axilite port=last_best      bundle=control
-#pragma HLS INTERFACE s_axilite port=xref           bundle=control
-#pragma HLS INTERFACE s_axilite port=uref           bundle=control
-#pragma HLS INTERFACE s_axilite port=xss            bundle=control
-#pragma HLS INTERFACE s_axilite port=uss            Bundle=control
-#pragma HLS INTERFACE s_axilite port=new_best       bundle=control
+#pragma HLS INTERFACE mode=s_axilite    port=x_curr     bundle=control
+#pragma HLS INTERFACE mode=s_axilite    port=u_curr     bundle=control
+#pragma HLS INTERFACE mode=s_axilite    port=last_best  bundle=control
+#pragma HLS INTERFACE mode=s_axilite    port=xref       bundle=control
 
-#pragma HLS INTERFACE m_axi depth=12    port=x_curr     offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=4     port=u_curr     offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=1     port=iteration  offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=40    port=last_best  offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=120   port=xref       offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=4     port=uref       offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=12    port=xss        offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=4     port=uss        offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=120   port=new_best   offset=slave bundle=input
+#pragma HLS INTERFACE mode=s_axilite    port=new_best   bundle=control
+
+#pragma HLS INTERFACE mode=s_axilite    port=return     bundle=control
+
+#pragma HLS INTERFACE mode=m_axi    port=x_curr     offset=slave bundle=gmem0 depth=_pragma_Nx
+#pragma HLS INTERFACE mode=m_axi    port=u_curr     offset=slave bundle=gmem0 depth=_pragma_n_U
+#pragma HLS INTERFACE mode=m_axi    port=last_best  offset=slave bundle=gmem0 depth=_pragma_n_U*_pragma_Nu
+#pragma HLS INTERFACE mode=m_axi    port=xref       offset=slave bundle=gmem0 depth=_pragma_Nx*_pragma_Nh
+#pragma HLS INTERFACE mode=m_axi    port=new_best   offset=slave bundle=gmem0 depth=_pragma_n_U*_pragma_Nu
+
+    typedef PSO<_hw_top_real, _n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
+    T_solver my_solver(
+        _stable_zero,
+        _max_v,
+        _w0,
+        _wf,
+        _slope,
+        _c1,
+        _c2,
+        _u_min,
+        _u_max,
+        _du_max,
+        _uss
+        // ,
+        // _hw_system,
+        // _hw_rand_core
+    );
 
     int iterations;
 	_hw_top_real my_x_curr[_Nx] ;
 	_hw_top_real my_u_curr[_n_U] ;
 	_hw_top_real my_last_best[_n_U*_Nu] ;
 	_hw_top_real my_xref[_Nx*_Nh];
-	_hw_top_real my_uref[_n_U] ;
-	_hw_top_real my_xss[_Nx];
-	_hw_top_real my_uss[_n_U] ;
+	// _hw_top_real my_uref[_n_U] ;
+	// _hw_top_real my_xss[_Nx];
+	// _hw_top_real my_uss[_n_U] ;
 
 	_hw_top_real my_new_best[_Nu*_n_U];
 	_hw_top_real my_J;
@@ -110,9 +108,9 @@ int nonlinear_solver_wrapper(
     memcpy_loop_rolled<_hw_top_real, float, _n_U>(my_u_curr, (float *)u_curr );
     memcpy_loop_rolled<_hw_top_real, float, _Nu*_n_U>(my_last_best, (float *)last_best );
     memcpy_loop_rolled<_hw_top_real, float, _Nu*_Nx>(my_xref, (float *)xref );
-    memcpy_loop_rolled<_hw_top_real, float, _n_U>(my_uref, (float *)uref );
-    memcpy_loop_rolled<_hw_top_real, float, _Nx>(my_xss, (float *)xss );
-    memcpy_loop_rolled<_hw_top_real, float, _n_U>(my_uss, (float *)uss );
+    // memcpy_loop_rolled<_hw_top_real, float, _n_U>(my_uref, (float *)uref );
+    // memcpy_loop_rolled<_hw_top_real, float, _Nx>(my_xss, (float *)xss );
+    // memcpy_loop_rolled<_hw_top_real, float, _n_U>(my_uss, (float *)uss );
     
     iterations = my_solver.execute(    
         my_x_curr, 
@@ -120,8 +118,8 @@ int nonlinear_solver_wrapper(
         iteration, 
         my_last_best, 
         my_xref,
-        my_uref, 
-        my_xss,
+        // my_uref, 
+        // my_xss,
         my_new_best,
         &my_J
     );

@@ -137,4 +137,9 @@ const _hw_top_real rand_max = 1.0;
     #define CLOCK_ID CLOCK_REALTIME
 #endif
 
+const int _pragma_Nh = _Nh;
+const int _pragma_Nu = _Nu;
+const int _pragma_Nx = _Nx;
+const int _pragma_n_U = _n_U;
+
 #endif

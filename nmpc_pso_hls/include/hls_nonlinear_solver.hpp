@@ -17,9 +17,9 @@ int nonlinear_solver_wrapper(
     int iteration, 
     volatile float *last_best,//[_Nu*_n_U], 
     volatile float *xref,//[_Nu*_Nx], 
-    volatile float *uref,//[_n_U], 
-    volatile float *xss,//[_Nx],
-    volatile float *uss,//[_n_U], 
+    // volatile float *uref,//[_n_U], 
+    // volatile float *xss,//[_Nx],
+    // volatile float *uss,//[_n_U], 
     
     float *new_best,//[_Nu*_n_U],
     float *J

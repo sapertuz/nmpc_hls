@@ -368,7 +368,16 @@ int main(int argc, char ** argv){
         int index_xref = iter*_Nx;
         int index_uref = iter*_n_U;
         // qtd_iter = solver->execute(curr_state, u_curr, iter, last_best, &xref[iter*_Nx], &uref[iter], xss, uss, &J_cost);
-        qtd_iter = nonlinear_solver_wrapper(curr_state, u_curr, iter, last_best, &xref[index_xref], &uref[index_uref], xss, uss, new_best, &J_cost);
+        // qtd_iter = nonlinear_solver_wrapper(curr_state, u_curr, iter, last_best, &xref[index_xref], &uref[index_uref], xss, uss, new_best, &J_cost);
+        qtd_iter = nonlinear_solver_wrapper(
+            curr_state, 
+            u_curr, 
+            iter, 
+            last_best, 
+            &xref[index_xref], 
+            new_best, 
+            &J_cost
+        );
         
         clock_gettime(CLOCK_ID, &requestEndCycle);
         cycle_time = ( requestEndCycle.tv_sec - requestStartCycle.tv_sec ) + ( requestEndCycle.tv_nsec - requestStartCycle.tv_nsec ) / BILLION;
