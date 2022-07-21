@@ -5,7 +5,7 @@
 
 //#include "config.hpp"
 #include "hls_system.hpp"
-#include "hls_pseudorand.hpp"
+// #include "hls_pseudorand.hpp"
 #include "aux_functions.hpp"
 
 #define H_MAX 60000.0f
@@ -23,7 +23,7 @@
 
 template<
     class _pso_hw_real,
-    // class _pso_randCore_t,
+    class _pso_randCore_t,
     // class _pso_system_t,
 	unsigned _pso_n_S,
 	unsigned _pso_maxiter,
@@ -105,7 +105,13 @@ protected:
 	const float pso_rand_max = 1.0f;
 	
 	// Pseudo Random Core Generator
-	typedef pseudoRand_gen _pso_randCore_t;
+	
+	// typedef pseudoRand_gen _pso_randCore_t;
+	// _pso_randCore_t randGen(
+	// 	(const float)pso_rand_min, 
+	// 	(const float)pso_rand_max
+	// );
+	_pso_randCore_t *rand_core_ptr;
 public:
 // Init Execute
 constexpr PSO(
@@ -121,8 +127,8 @@ constexpr PSO(
 	const _pso_hw_real	*__u_max,
 	const _pso_hw_real	*__du_max,
 	const _pso_hw_real 	*__uss
-/*	
 	,
+/*	
 	const unsigned short _controlled_state[_pso_Nx],
 	const _pso_hw_real _state_upper_limits[_pso_Nx],
 	const _pso_hw_real _state_lower_limits[_pso_Nx],
@@ -134,18 +140,18 @@ constexpr PSO(
 */
 	// ,
 	// _pso_system_t __current_system,
-	// _pso_randCore_t __randGen
+	_pso_randCore_t *__randGen
 	) : max_v(__max_v), min_v(-__max_v), w0(__w0), wf(__wf), 
 		slope(__slope), c1(__c1), c2(__c2),
 		stable_zero(__stable_zero), init_v(__max_v*0.1),
 		u_min(__u_min), u_max(__u_max), du_max(__du_max), uss_local(__uss)
-		// ,
+		,
 /*		
 		Ts(_Ts), controlled_state(_controlled_state), 
         state_upper_limits(_state_upper_limits), state_lower_limits(_state_lower_limits),
         Q(_Q), Qf(_Qf), R(_R), 
 */
-		// randGen(__randGen)
+		rand_core_ptr(__randGen)
 		// , current_system(__current_system)
 {
 }
@@ -327,11 +333,11 @@ _pso_hw_real rand_real(unsigned core){
 volatile _pso_hw_real rand_real(){
 #pragma HLS inline off
 #if (defined(__SYNTHESIS__) || defined(SYNTH_RAND))
-	_pso_randCore_t randGen(
-		(const float)pso_rand_min, 
-		(const float)pso_rand_max
-	);
-	_pso_hw_real return_value = randGen.rand_num();
+	// _pso_randCore_t randGen(
+	// 	(const float)pso_rand_min, 
+	// 	(const float)pso_rand_max
+	// );
+	_pso_hw_real return_value = rand_core_ptr->rand_num();
 #else
 	_pso_hw_real return_value = (_pso_hw_real)rand()/(_pso_hw_real)RAND_MAX;
 #endif
@@ -717,16 +723,15 @@ void updateParticlesWithDuConstrains(
 	// _pso_hw_real **_y,
 	// _pso_hw_real **_v
 ){
-#pragma HLS ALLOCATION type=function instances=rand_real limit=1 
 
 	// Update particles
 	_pso_hw_real x_ant[_pso_n_U], x_ant_tmp[_pso_n_U];
     for (unsigned int i = 0; i < n_S; ++i) {
 // #pragma UNROLL
-#pragma HLS ALLOCATION type=operation instances=hmul 	  limit=1 
-#pragma HLS ALLOCATION type=operation instances=hadd 	  limit=1 
-#pragma HLS ALLOCATION type=operation instances=hsub 	  limit=1 
-#pragma HLS ALLOCATION type=function  instances=rand_real limit=1 
+#pragma HLS ALLOCATION operation instances=hmul 	  limit=1 
+#pragma HLS ALLOCATION operation instances=hadd 	  limit=1 
+#pragma HLS ALLOCATION operation instances=hsub 	  limit=1 
+#pragma HLS ALLOCATION function  instances=rand_real limit=1 
 		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant_tmp, (_pso_hw_real*)u_curr);
         //if(valid_particle[i] == 1){
     	 for (unsigned int j = 0; j < Nu; ++j) {

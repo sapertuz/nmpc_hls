@@ -3,9 +3,6 @@
 
 /***************************** Include Files *********************************/
 #include "config.hpp"
-// #include "hls_pseudorand.hpp"
-// #include "hls_system.hpp"
-#include "hls_pso.hpp"
 
 /************************** Class Definitions ****************************/
 

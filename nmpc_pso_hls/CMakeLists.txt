@@ -14,7 +14,7 @@ aux_source_directory(${SOURCE_DIR} SRC_LIST)
 # Build output configuration
 
 # set(executables_list main_hls_model main_hls_system)
-set(executables_list main_hls_model main_hls_system)
+set(executables_list main_hls_model main_hls_system main_hls_pseudorand)
 foreach(exec ${executables_list})
     project(${exec} VERSION 0.1.0)
     add_executable(${PROJECT_NAME}  ${SOURCE_DIR}/${exec}.cpp)
@@ -32,7 +32,7 @@ set(exec main_hls_pso)
 project(${exec} VERSION 0.1.0)
 add_executable(${exec} ${SOURCE_DIR}/${exec}.cpp
     ${SOURCE_DIR}/hls_nonlinear_solver.cpp
-    ${SOURCE_DIR}/hls_pseudorand.cpp
+    # ${SOURCE_DIR}/hls_pseudorand.cpp
     ${SOURCE_DIR}/aux_functions.cpp
 )
 target_include_directories(${PROJECT_NAME} PUBLIC

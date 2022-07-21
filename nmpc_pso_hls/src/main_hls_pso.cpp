@@ -12,6 +12,7 @@
 #include "read_from_file.hpp"
 #include "aux_functions.hpp"
 
+#include "hls_system.hpp"
 /*
 // Test
 // {
