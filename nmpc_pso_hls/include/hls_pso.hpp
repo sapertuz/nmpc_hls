@@ -337,7 +337,8 @@ volatile _pso_hw_real rand_real(){
 	// 	(const float)pso_rand_min, 
 	// 	(const float)pso_rand_max
 	// );
-	_pso_hw_real return_value = rand_core_ptr->rand_num();
+	_pso_hw_real return_value;
+	rand_core_ptr->rand_num(return_value);
 #else
 	_pso_hw_real return_value = (_pso_hw_real)rand()/(_pso_hw_real)RAND_MAX;
 #endif

@@ -10,6 +10,7 @@
 
 #ifdef __SYNTHESIS__
 #include "hls_math.h"
+#include "hls_stream.h"
 #include "ap_fixed.h"
 #endif
 
@@ -36,7 +37,7 @@ protected:
         0.5622700
     };
     
-    int __rnd_seed_co[10]={
+    uint32_t __rnd_seed_co[10]={
         17279329,
         334905,
         8550184,
@@ -48,11 +49,12 @@ protected:
         23714,
         18431762
     };
-
+    
     const _rand_local_real RAND_INT_MIN = 0.0;           // Minimum value for a variable of type int.
     const _rand_local_real RAND_INT_MAX = 2147483647.0;  // Maximum value for a variable of type int.
 
     char core_index = 0;
+    char flag = 0;
 
     const _rand_local_real out_min = 0.0;
     const _rand_local_real out_max = 1.0;
@@ -67,15 +69,34 @@ constexpr pseudoRand_gen(
 }
 
 //---------------------------------------------------------------------
-_rand_hw_real rand_num (void)
-{
-#pragma PIPELINE II=7
-    _rand_hw_real random_number = this->__rnd_num[this->core_index];
+void rand_num (
+// #ifndef __SYNTHESIS__
+    _rand_hw_real &rand_out
+// #else
+//     hls::stream< _rand_hw_real > &rand_out
+// #endif
+){
+#pragma HLS dataflow
+// #pragma HLS pipeline II=6
+// #pragma HLS STREAM variable=rand_out depth=2 type=fifo
+// #pragma HLS STREAM variable=__rnd_seed_co depth=2 type=pipo
+#pragma HLS array_partition variable=__rnd_seed_co type=complete
+#pragma HLS array_partition variable=__rnd_num type=complete
 
-    this->__rnd_num[this->core_index] = this->aux_rand_num(this->core_index);
+    _rand_hw_real random_number;
+
+    // for (int i = 0; i < count; i++){
+    rand_out = __rnd_num[this->core_index];
+    random_number = this->aux_rand_num(this->core_index);
+    __rnd_num[this->core_index] = random_number;
     this->core_index = (this->core_index < 9)? this->core_index + 1 : 0;
+    // }
 
-    return random_number;
+// #ifndef __SYNTHESIS__
+// #else
+//     rand_out.write(random_number);
+// #endif
+
 };
 //---------------------------------------------------------------------
 
@@ -84,16 +105,18 @@ private:
 _rand_hw_real aux_rand_num(int core)
 {
 #pragma HLS inline
-    unsigned int hi,lo;
-    hi = 16807 * (this->__rnd_seed_co[core] >> 16);
-    lo = 16807 * (this->__rnd_seed_co[core] & 0xFFFF);
+    uint32_t hi,lo;
+    uint32_t local_seed = this->__rnd_seed_co[core];
+    hi = 16807 * (local_seed >> 16);
+    lo = 16807 * (local_seed & 0xFFFF);
     lo += (hi & 0x7FFF) << 16;
     lo += hi >> 15;
-    if (lo > 2147483647)
-        lo -= 2147483647;
+    // if (lo > 2147483647)
+    //     lo -= 2147483647;
     this->__rnd_seed_co[core] = lo;
     
-    _rand_hw_real output_f = (_rand_local_real)this->__rnd_seed_co[core] * divider; //+ out_min;
+    _rand_local_real output_fp = (_rand_local_real)local_seed * divider; //+ out_min;
+    _rand_hw_real output_f = output_fp;
     // std::cout << " -> " << (_rand_local_real)this->__rnd_seed_co[core] << " * " << divider << " = " << output_f << std::endl;
     return output_f;    
 }
