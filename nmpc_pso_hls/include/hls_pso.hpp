@@ -5,7 +5,7 @@
 
 //#include "config.hpp"
 #include "hls_system.hpp"
-// #include "hls_pseudorand.hpp"
+#include "hls_pseudorand.hpp"
 #include "aux_functions.hpp"
 
 #define H_MAX 60000.0f
@@ -23,7 +23,7 @@
 
 template<
     class _pso_hw_real,
-    class _pso_randCore_t,
+    // class _pso_randCore_t,
     // class _pso_system_t,
 	unsigned _pso_n_S,
 	unsigned _pso_maxiter,
@@ -105,13 +105,12 @@ protected:
 	const float pso_rand_max = 1.0f;
 	
 	// Pseudo Random Core Generator
-	
-	// typedef pseudoRand_gen _pso_randCore_t;
+	typedef pseudoRand_gen<_pso_hw_real> _pso_randCore_t;
 	// _pso_randCore_t randGen(
 	// 	(const float)pso_rand_min, 
 	// 	(const float)pso_rand_max
 	// );
-	_pso_randCore_t *rand_core_ptr;
+	_pso_randCore_t rand_core;
 public:
 // Init Execute
 constexpr PSO(
@@ -127,7 +126,7 @@ constexpr PSO(
 	const _pso_hw_real	*__u_max,
 	const _pso_hw_real	*__du_max,
 	const _pso_hw_real 	*__uss
-	,
+	// ,
 /*	
 	const unsigned short _controlled_state[_pso_Nx],
 	const _pso_hw_real _state_upper_limits[_pso_Nx],
@@ -140,18 +139,18 @@ constexpr PSO(
 */
 	// ,
 	// _pso_system_t __current_system,
-	_pso_randCore_t *__randGen
+	// _pso_randCore_t *__randGen
 	) : max_v(__max_v), min_v(-__max_v), w0(__w0), wf(__wf), 
 		slope(__slope), c1(__c1), c2(__c2),
 		stable_zero(__stable_zero), init_v(__max_v*0.1),
 		u_min(__u_min), u_max(__u_max), du_max(__du_max), uss_local(__uss)
-		,
+		// ,
 /*		
 		Ts(_Ts), controlled_state(_controlled_state), 
         state_upper_limits(_state_upper_limits), state_lower_limits(_state_lower_limits),
         Q(_Q), Qf(_Qf), R(_R), 
 */
-		rand_core_ptr(__randGen)
+		// rand_core_ptr(__randGen)
 		// , current_system(__current_system)
 {
 }
@@ -168,24 +167,13 @@ int execute(
 	//volatile _pso_hw_real uss[_pso_n_U], 
 	
 	_pso_hw_real new_best[_pso_Nu*_pso_n_U],
-	_pso_hw_real * J
+	_pso_hw_real J[1]
 ){
-
 #pragma HLS ALLOCATION operation instances=hadd limit=2
 #pragma HLS ALLOCATION operation instances=hsub limit=2
 #pragma HLS ALLOCATION operation instances=hmul limit=2
 
-// #pragma HLS bind_storage variable=x_max_first type=RAM_2P impl=LUTRAM
-// #pragma HLS bind_storage variable=x_min_first type=RAM_2P impl=LUTRAM
-
-// #pragma HLS bind_storage variable=x type=RAM_T2P impl=BRAM
-// #pragma HLS stream variable=x type=shared
-// #pragma HLS bind_storage variable=y type=RAM_T2P impl=BRAM
-// #pragma HLS stream variable=y type=shared
-// #pragma HLS bind_storage variable=v type=RAM_T2P impl=BRAM
-// #pragma HLS stream variable=v type=shared
-
-    // Update sensor read
+	// Update sensor read
     //static System * controled_system = new ModelState();
     //controled_system->setState(x_curr);
 
@@ -202,7 +190,6 @@ int execute(
 #ifdef __SYNTHESIS__
 	_pso_hw_real u_curr_local[_pso_n_U];
 #pragma HLS bind_storage variable=u_curr_local type=RAM_2P impl=LUTRAM
-// #pragma HLS stream variable=u_curr_local type=shared
 
 	_pso_hw_real x_curr_local[_pso_Nx];
 #pragma HLS bind_storage variable=x_curr_local type=RAM_2P impl=LUTRAM
@@ -212,13 +199,6 @@ int execute(
 #pragma HLS bind_storage variable=xref_local type=RAM_2P impl=BRAM
 #pragma HLS stream variable=xref_local type=shared
 
-// 	_pso_hw_real uref_local[_pso_n_U];
-// #pragma HLS bind_storage variable=uref_local type=RAM_2P impl=LUTRAM
-// #pragma HLS stream variable=uref_local type=shared
-
-// 	_pso_hw_real xss_local[_pso_Nx];
-// #pragma HLS bind_storage variable=xss_local type=RAM_2P impl=LUTRAM
-// #pragma HLS stream variable=xss_local type=shared
 #else
 	_pso_hw_real *u_curr_local;
 	_pso_hw_real *x_curr_local;
@@ -231,6 +211,9 @@ int execute(
 	// uref_local = (_pso_hw_real *) malloc(n_U*sizeof(_pso_hw_real));
 	// xss_local = (_pso_hw_real *) malloc(Nx*sizeof(_pso_hw_real));
 #endif
+{
+#pragma HLS dataflow
+
 	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(u_curr_local, 	(_pso_hw_real *)u_curr);
 	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(x_curr_local, 	(_pso_hw_real *)x_curr);
 	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx*_pso_Nh>(xref_local, (_pso_hw_real *)xref);
@@ -250,7 +233,7 @@ int execute(
 	initializeStableZero(u_curr_local, particle_stable_zero);
 
     initializeBestLocalFitness();
-
+}
 	// ITERATIVE PROCESS
 	unsigned int k = 0;  // index of iteration
 
@@ -330,19 +313,16 @@ _pso_hw_real rand_real(unsigned core){
 */
 
 
-volatile _pso_hw_real rand_real(){
-#pragma HLS inline off
+volatile void rand_real(_pso_hw_real &rand_value){
+// #pragma HLS inline off
+	// static _pso_randCore_t rand_core;
+	_pso_hw_real rand_num_out;
 #if (defined(__SYNTHESIS__) || defined(SYNTH_RAND))
-	// _pso_randCore_t randGen(
-	// 	(const float)pso_rand_min, 
-	// 	(const float)pso_rand_max
-	// );
-	_pso_hw_real return_value;
-	rand_core_ptr->rand_num(return_value);
+	rand_core.rand_num(rand_num_out);
 #else
-	_pso_hw_real return_value = (_pso_hw_real)rand()/(_pso_hw_real)RAND_MAX;
+	rand_num_out = (_pso_hw_real)rand()/(_pso_hw_real)RAND_MAX;
 #endif
-	return return_value;
+	rand_value = rand_num_out;
 }
 
 // ---------------------------------------------------
@@ -410,9 +390,6 @@ int detectGlobalMinimum(
     bestfitness[iter] = min_array(f_ind, &pos);
     
 	// // Global minimum position
-    // for (unsigned int i = 0; i < Nu*n_U; ++i) {
-    //     global_min[i] = _y[pos][i];
-    // }
     return pos;
 
 }
@@ -422,16 +399,9 @@ void equalizeParticles(
 	// _pso_hw_real **_x,
 	_pso_hw_real iteration
 ){
-//#pragma HLS inline
-/*
-#pragma HLS ALLOCATION instances=hmul limit=1 operation
-#pragma HLS ALLOCATION instances=hadd limit=1 operation
-#pragma HLS ALLOCATION instances=hsub limit=1 operation
-*/	
 	_pso_hw_real x_tmp;
 	if (iteration == 0){	
     for (unsigned int i = 0; i < n_S; ++i) {
-// #pragma UNROLL
 		for (unsigned int k = 1; k < Nu; ++k) {
 	 	   	int idx1 = k*n_U;
 	 	   	int idx2 = 0;
@@ -515,9 +485,10 @@ void initializeParticlesWithDuConstrains(
 		for (unsigned int j = 0; j < Nu; ++j) {
 			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant, (_pso_hw_real *)x_ant_tmp);
 			for (unsigned int k = 0; k < n_U; ++k) {
-#pragma HLS pipeline II=11 rewind
+// #pragma HLS pipeline II=11 rewind
 				int idx = j*n_U + k;
-				volatile _pso_hw_real rand_tmp = rand_real();
+				_pso_hw_real rand_tmp;
+				rand_real(rand_tmp);
 				_pso_hw_real du_tmp = rand_tmp*(_pso_hw_real)2.0*du_max[k] - du_max[k];
 		        _pso_hw_real x_tmp = x_ant[k] + du_tmp; //random->read(); 
 		        // _pso_hw_real x_tmp = ( x_ant[k] + (-du_max[k]) ) + ((_pso_hw_real)2.0*du_max[k]) * rand_tmp; //random->read(); 
@@ -551,7 +522,8 @@ void initializeParticles(
 		for (unsigned int j = 0; j < Nu; ++j) {
 			for (unsigned int k = 0; k < n_U; ++k) {
 				int idx = j*n_U + k;
-				_pso_hw_real rand_tmp = rand_real();
+				_pso_hw_real rand_tmp; 
+				rand_real(rand_tmp);
 				_pso_hw_real x_tmp = (j == 0)? 
 					u_min[k] + (u_max[k]-u_min[k]) * rand_tmp: //random->read();
 					x_ant[k] - d_max + (d2_max) * rand_tmp; //random->read();
@@ -694,8 +666,9 @@ void updateParticles(
 				_pso_hw_real v_tmp = v[i*part_S + idx];
 				_pso_hw_real x_tmp = x[i*part_S + idx];
 				
-				_pso_hw_real r1 = rand_real(); //random->read();
-				_pso_hw_real r2 = rand_real(); //random->read();
+				_pso_hw_real r1, r2;
+				rand_real(r1); //random->read();
+				rand_real(r2); //random->read();
 
 				// v = w*v + c1*r1*(y-x) + c2*r2*(global_min - x)
 				_pso_hw_real v_new = w*v_tmp + c1*r1*(y[i*part_S + idx]-x_tmp) + c2*r2*(global_min[idx] - x_tmp);
@@ -729,20 +702,21 @@ void updateParticlesWithDuConstrains(
 	_pso_hw_real x_ant[_pso_n_U], x_ant_tmp[_pso_n_U];
     for (unsigned int i = 0; i < n_S; ++i) {
 // #pragma UNROLL
-#pragma HLS ALLOCATION operation instances=hmul 	  limit=1 
-#pragma HLS ALLOCATION operation instances=hadd 	  limit=1 
-#pragma HLS ALLOCATION operation instances=hsub 	  limit=1 
-#pragma HLS ALLOCATION function  instances=rand_real limit=1 
+// #pragma HLS ALLOCATION operation instances=hmul 	  limit=1 
+// #pragma HLS ALLOCATION operation instances=hadd 	  limit=1 
+// #pragma HLS ALLOCATION operation instances=hsub 	  limit=1 
+// #pragma HLS ALLOCATION function  instances=rand_real limit=1 
 		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant_tmp, (_pso_hw_real*)u_curr);
         //if(valid_particle[i] == 1){
     	 for (unsigned int j = 0; j < Nu; ++j) {
 			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant, (_pso_hw_real*)x_ant_tmp);
     	 	for (unsigned int k = 0; k < n_U; ++k){
-#pragma HLS pipeline II=11 rewind
+// #pragma HLS pipeline II=11 rewind
     	 		// int idx = k*Nu+j;
 				int idx = j*n_U+k;
-                _pso_hw_real r1 = rand_real(); //random->read();
-                _pso_hw_real r2 = rand_real(); //random->read();
+                _pso_hw_real r1,r2;
+				rand_real(r1); //random->read();
+                rand_real(r2); //random->read();
 
 	            _pso_hw_real v_tmp = v[i*part_S + idx];
 	            _pso_hw_real x_tmp = x[i*part_S + idx];

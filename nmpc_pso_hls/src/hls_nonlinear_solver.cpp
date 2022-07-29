@@ -1,5 +1,5 @@
 #include "hls_nonlinear_solver.hpp"
-#include "hls_pseudorand.hpp"
+// #include "hls_pseudorand.hpp"
 // #include "hls_system.hpp"
 #include "hls_pso.hpp"
 
@@ -26,16 +26,16 @@
 //     // my_model
 // );
 // Pseudo Random Core Generator
-typedef pseudoRand_gen<float> _randCore_t;
-_randCore_t _hw_rand_core(
-    (const float)rand_min, 
-    (const float)rand_max
-);
+// typedef pseudoRand_gen<_hw_top_real> _randCore_t;
+// static _randCore_t _hw_rand_core(
+//     (const float)rand_min, 
+//     (const float)rand_max
+// );
 // Nonlinear PSO Solver
 // _system_t *_hw_system_ptr = &_hw_system;
-_randCore_t *_hw_rand_core_ptr = &_hw_rand_core;
+// static _randCore_t *_hw_rand_core_ptr = &_hw_rand_core;
 
-typedef PSO<_hw_top_real, _randCore_t, _n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
+typedef PSO<_hw_top_real, _n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
 T_solver my_solver(
     _stable_zero,
     _max_v,
@@ -48,9 +48,9 @@ T_solver my_solver(
     _u_max,
     _du_max,
     _uss
-    ,
+    // ,
     // _hw_system,
-    _hw_rand_core_ptr
+    // _hw_rand_core_ptr
 );
 
 /*****************************************************************************/

@@ -15,8 +15,8 @@ set src_path ${workspace}/src
 set incl_path ${workspace}/include
 set main_name "main_hls_pseudorand" 
 
-set c_flags "-I${incl_path} -std=c++11 -Wno-unknown-pragmas"
-set csim_tb_flags "-I${incl_path} -std=c++11 -Wno-unknown-pragmas"
+set c_flags "-I${incl_path} -D__VITIS__ -std=c++11 -Wno-unknown-pragmas"
+set csim_tb_flags "-I${incl_path} -D__VITIS__ -std=c++11 -Wno-unknown-pragmas"
 
 open_project $prj_name
 set_top $prj_top
@@ -26,9 +26,11 @@ add_files -tb $src_path/$main_name.cpp -cflags $c_flags -csimflags $csim_tb_flag
 
 open_solution "solution_pseudorand" -flow_target vivado
 
-set_part {xczu3eg-sbva484-1-i}
+set_part {xc7z020clg400-1}
 create_clock -period 10 -name default
 config_export -display_name sniffbot_pseudorand -format ip_catalog -output $ip_path/sniffbot_pseudorand.zip -rtl verilog -vendor tu-dresden -version 1.0
+config_interface -m_axi_addr64=0 -s_axilite_auto_restart_counter 1
+config_rtl -reset state
 
 # config_core DSP48 -latency 4
 
