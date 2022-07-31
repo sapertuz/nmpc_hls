@@ -3,7 +3,7 @@
 ## Please DO NOT edit it.
 ## Copyright 1986-2021 Xilinx, Inc. All Rights Reserved.
 ############################################################
-set prj_name nmpc_hls_pso
+set prj_name nmpc_solver_execute_fsm
 set prj_top nonlinear_solver_wrapper
 
 set ip_path "/home/chello/Documents/Vivado_WS/vitis_ip_repo"
@@ -12,12 +12,12 @@ set workspace [file dirname $workspace]
 
 set src_path ${workspace}/src
 set incl_path ${workspace}/include
-set module_file "hls_nonlinear_solver" 
+# set module_file "hls_nonlinear_solver" 
 set main_name "main_hls_pso" 
 
 set arg_str "${workspace}/config/sniffbot/project_config.txt ${workspace}/config/sniffbot/simulation_config_ring.txt"
-set c_flags "-DSNIFFBOT_CONFIG -DPSO_CONFIG -DUSE_FAST_SIN_COS -I${incl_path} -I${incl_path}/models -std=c++11 -Wno-unknown-pragmas"
-set csim_tb_flags "-DSNIFFBOT_CONFIG -DPSO_CONFIG -I${incl_path} -I${incl_path}/models -std=c++11  -DDEBUG_FILE -DPRINT_TO_TERMINAL -Wno-unknown-pragmas"
+set c_flags "-D__VITIS__ -DSNIFFBOT_CONFIG -DPSO_CONFIG -DUSE_FAST_SIN_COS -I${incl_path} -I${incl_path}/models -std=c++11 -Wno-unknown-pragmas"
+set csim_tb_flags "-D__VITIS__ -DSNIFFBOT_CONFIG -DPSO_CONFIG -I${incl_path} -I${incl_path}/models -std=c++11  -DDEBUG_FILE -DPRINT_TO_TERMINAL -Wno-unknown-pragmas"
 
 open_project $prj_name
 
@@ -26,12 +26,11 @@ set_top $prj_top
 #     add_files $file
 # }
 
-# add_files ${incl_path}/${module_file}.hpp -cflags $c_flags -csimflags $csim_tb_flags
-add_files ${src_path}/${module_file}.cpp -cflags $c_flags -csimflags $csim_tb_flags
-add_files ${src_path}/hls_pseudorand.cpp -cflags $c_flags -csimflags $csim_tb_flags
+add_files ${src_path}/hls_nonlinear_solver.cpp  -cflags $c_flags -csimflags $csim_tb_flags
+add_files ${src_path}/hls_pso.cpp               -cflags $c_flags -csimflags $csim_tb_flags
+
 add_files -tb ${src_path}/${main_name}.cpp -cflags $csim_tb_flags -csimflags $csim_tb_flags
 add_files -tb ${src_path}/aux_functions.cpp -cflags $csim_tb_flags -csimflags $csim_tb_flags
-
 
 open_solution "solution_system" -flow_target vivado
 
@@ -43,7 +42,7 @@ config_export -display_name sniffbot_nmpc -format ip_catalog -output $ip_path/sn
 
 # config_core DSP48 -latency 4
 
-csim_design -argv $arg_str -clean -O -profile
+# csim_design -argv $arg_str -clean -O -profile
 csynth_design
 # cosim_design -O -rtl vhdl
 # export_design -format ip_catalog

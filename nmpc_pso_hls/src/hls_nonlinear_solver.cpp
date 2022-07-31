@@ -35,23 +35,23 @@
 // _system_t *_hw_system_ptr = &_hw_system;
 // static _randCore_t *_hw_rand_core_ptr = &_hw_rand_core;
 
-typedef PSO<_hw_top_real, _n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
-T_solver my_solver(
-    _stable_zero,
-    _max_v,
-    _w0,
-    _wf,
-    _slope,
-    _c1,
-    _c2,
-    _u_min,
-    _u_max,
-    _du_max,
-    _uss
-    // ,
-    // _hw_system,
-    // _hw_rand_core_ptr
-);
+// typedef PSO<_hw_top_real, _n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
+// T_solver my_solver(
+//     _stable_zero,
+//     _max_v,
+//     _w0,
+//     _wf,
+//     _slope,
+//     _c1,
+//     _c2,
+//     _u_min,
+//     _u_max,
+//     _du_max,
+//     _uss
+//     // ,
+//     // _hw_system,
+//     // _hw_rand_core_ptr
+// );
 
 /*****************************************************************************/
 /**
@@ -114,7 +114,7 @@ int nonlinear_solver_wrapper(
     // memcpy_loop_rolled<_hw_top_real, float, _Nx>(my_xss, (float *)xss );
     // memcpy_loop_rolled<_hw_top_real, float, _n_U>(my_uss, (float *)uss );
     
-    iterations = my_solver.execute(    
+    iterations = pso_solver::execute(    
         my_x_curr, 
         my_u_curr, 
         iteration, 

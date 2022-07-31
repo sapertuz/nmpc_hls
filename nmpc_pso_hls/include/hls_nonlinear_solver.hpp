@@ -3,6 +3,7 @@
 
 /***************************** Include Files *********************************/
 #include "config.hpp"
+#include "aux_functions.hpp"
 
 /************************** Class Definitions ****************************/
 

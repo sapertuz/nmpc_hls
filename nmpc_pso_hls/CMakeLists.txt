@@ -31,6 +31,7 @@ endforeach()
 set(exec main_hls_pso)
 project(${exec} VERSION 0.1.0)
 add_executable(${exec} ${SOURCE_DIR}/${exec}.cpp
+    ${SOURCE_DIR}/hls_pso.cpp
     ${SOURCE_DIR}/hls_nonlinear_solver.cpp
     # ${SOURCE_DIR}/hls_pseudorand.cpp
     ${SOURCE_DIR}/aux_functions.cpp
