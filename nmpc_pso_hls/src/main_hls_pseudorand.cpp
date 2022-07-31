@@ -13,7 +13,7 @@
 #include "hls_math.h"
 #include "hls_stream.h"
 #include "ap_fixed.h"
-typedef float _rand_real;
+typedef half _rand_real;
 // typedef ap_fixed<48,5, AP_RND, AP_SAT> _rand_real;
 typedef hls::stream< _rand_real> _rand_real_stream;
 #else
@@ -46,18 +46,21 @@ void rand_wrapper(
 
 #if  (defined(__SYNTHESIS__) || (defined(__VITIS__)))
     _rand_real rand_num_out;
-	while(1){
-#pragma HLS pipeline II=12
-	if (!rand_out.full()){
+//    for (int i = 0; i < 1024; i++)
+    while(1)
+    {
+#pragma HLS pipeline II=1
+//	if (!rand_out.full()){
 		_hw_rand_core.rand_num(rand_num_out);
 		rand_out.write(rand_num_out);
+//	}
 	}
-    }
 #else
     _rand_real rand_num_out;
     _hw_rand_core.rand_num(rand_num_out);
     rand_out = rand_num_out;
 #endif
+//   return;
 }
 
 // _rand_real rand_wrapper()
@@ -72,21 +75,28 @@ int main(){
     std::cout << "Test Pseudorand Core" << std::endl;
     std::cout << "--------------------" << std::endl;
     _rand_real_stream num;
+    _rand_real num_real;
     float num_f;
-    
+
+#if (defined(__SYNTHESIS__) || (defined(__VITIS__)))
+    rand_wrapper(num);
+#endif
+
     for (int k = 0; k < 10; k++){
     for (int i = 0; i < 10; i++){
-        rand_wrapper(num);
 #if (defined(__SYNTHESIS__) || (defined(__VITIS__)))
-        num.read(num_f);
+        while(num.empty()==1){}
+        num.read(num_real);
+        num_f = (float)num_real;
 #else
+        rand_wrapper(num);
         num_f = num;
 #endif
         std::cout << std::fixed << std::setprecision(3) << num_f << ", \t";
     }
     std::cout << std::endl;
     }
-    rand_wrapper(num);
+    // rand_wrapper(0, num);
     
     std::cout << "--------------------" << std::endl;
     std::cout << "End Test" << std::endl;
