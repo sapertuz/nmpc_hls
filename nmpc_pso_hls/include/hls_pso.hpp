@@ -33,34 +33,6 @@
 // Pseudo random generator variables
 namespace pso_solver
 {
-const unsigned int n_S = _pso_n_S; 	// number of particles
-//System * controled_system;
-
-// const int kpso = _KPSO;
-// const int stable_zero;
-const uint8_t particle_last_best = 0;
-const uint8_t particle_stable_zero = 1;
-
-// PSO Parameters
-// const unsigned int	_pso_maxiter = _pso_maxiter;
-const _pso_hw_real 	_pso_max_v = _max_v;
-const _pso_hw_real 	_pso_min_v = -_max_v;
-const _pso_hw_real 	_pso_w0 = _w0; // initial weight
-const _pso_hw_real	_pso_wf = _wf; // final weight
-const _pso_hw_real	_pso_slope = _slope;
-const _pso_hw_real	_pso_c1 = _c1; // cognitive coefficient
-const _pso_hw_real	_pso_c2 = _c2; // social coefficient
-
-
-const _pso_hw_real _pso_init_v = _max_v*0.1; // initial velocity
-
-// Controlled System Configuration
-const unsigned int Nh = _pso_Nh;
-const unsigned int Nx = _pso_Nx;
-const unsigned int n_U = _pso_n_U;
-const unsigned int Nu = _pso_Nu;
-const unsigned int part_S = Nu*n_U;
-// _pso_hw_real u_from_parameters[_N*_pso_n_U];
 
 // ---------------------------------------------------
 int execute(
@@ -89,38 +61,71 @@ _pso_hw_real rand_real(unsigned core){
 	return return_value;
 }
 */
+// ---------------------------------------------------
 
+void initializeParticles_set(
+	// Top Level inputs (FIFO Streams)
+	volatile _pso_hw_real *u_curr,
+	volatile _pso_hw_real *x_curr,
+	volatile _pso_hw_real *xref,
+	volatile _pso_hw_real *last_best,
 
-void rand_real(_pso_hw_real &rand_value);
+	// Particle Data Memory
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
+	_pso_hw_real *local_v,
+
+	// Particle Variables
+	_pso_hw_real *xref_local,
+	_pso_hw_real *f_ind_local,
+	_pso_hw_real &w,
+
+	// Local memories for system constraints created now
+	_pso_hw_real *u_curr_local,
+	_pso_hw_real *x_curr_local,
+
+	// Local memories for system constraints created now
+	_pso_hw_real *local_du_min,
+	_pso_hw_real *local_du_max,
+	_pso_hw_real *local_u_min,
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_x_min_first,
+	_pso_hw_real *local_x_max_first,
+	_pso_hw_real *local_uss,
+	
+	bool *valid_particle
+);
 
 // ---------------------------------------------------
-_pso_hw_real min_array(
-	_pso_hw_real *array,//[_pso_n_S], 
-	int * pos
-);
+
+void rand_real(_pso_hw_real &rand_value);
 
 // Init Functions
 // ---------------------------------------------------
 void initializeConstrains(
-	volatile _pso_hw_real *u_curr
+	volatile _pso_hw_real *u_curr,
+	_pso_hw_real *local_du_max,
+	_pso_hw_real *local_du_min,
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min,
+
+	_pso_hw_real *local_x_max_first,
+	_pso_hw_real *local_x_min_first
 );
 // ---------------------------------------------------
 void calculate_du_min(
-);
-// ---------------------------------------------------
-void initializeBestLocalFitness(void);
-// ---------------------------------------------------
-int detectGlobalMinimum(
-	int iter
+	_pso_hw_real *_local_du_min,
+	_pso_hw_real *_local_du_max
 );
 // ---------------------------------------------------
 void equalizeParticles(
-//	_pso_hw_real _x[][_pso_Nu*_pso_n_U],
-	// _pso_hw_real **_x,
+	_pso_hw_real *local_x,
 	_pso_hw_real iteration
 );
 // ---------------------------------------------------
 _pso_hw_real verifyControlConstrains(
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min,
 	_pso_hw_real value, 
 	int pos
 );
@@ -134,18 +139,20 @@ void detectInvalidParticles(
 	// _pso_hw_real *_x
 );
 #endif
-// Workflow Functions
+
 // ---------------------------------------------------
 void initializeParticlesWithDuConstrains(
-	volatile _pso_hw_real *u_curr 
-	//volatile _pso_hw_real *uss,
+	_pso_hw_real *u_curr,
+	_pso_hw_real *local_du_max,
+	
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min,
 
-	// _pso_hw_real _x[][_pso_Nu*_pso_n_U], 
-	// _pso_hw_real _y[][_pso_Nu*_pso_n_U], 
-	// _pso_hw_real _v[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real ** _x,
-	// _pso_hw_real ** _y,
-	// _pso_hw_real ** _v
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
+	_pso_hw_real *local_v,
+	
+	bool *valid_particle
 );
 
 #ifdef PSO_CANON
@@ -162,30 +169,38 @@ void initializeParticles(
 // ---------------------------------------------------
 void initializeLastBestKPSO(
 	_pso_hw_real volatile *last_best,
-	// _pso_hw_real _x[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real **_x,
-	uint8_t index
+
+	_pso_hw_real *local_x_max_first,
+	_pso_hw_real *local_x_min_first,
+	_pso_hw_real *local_x,
+
+	int index
 );
 // ---------------------------------------------------
 void initializeStableZero(
-//	_pso_hw_real *uss, 
-	_pso_hw_real *u_curr, 	
-	// _pso_hw_real _x[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real **_x,
-	uint8_t index
+	_pso_hw_real *uss_local, 
+	_pso_hw_real *u_curr,
+
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min,
+	_pso_hw_real *local_du_max,
+	_pso_hw_real *local_du_min,
+	
+	_pso_hw_real *local_x,
+	
+	int index
 );
+// Workflow Functions
 // ---------------------------------------------------
 void evaluateFitnessAndDetectLocalBest(
-	// _pso_hw_real _x[][_pso_Nu*_pso_n_U], 
-	// _pso_hw_real _y[][_pso_Nu*_pso_n_U],
-	// _pso_hw_real **_x,
-	// _pso_hw_real **_y,
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
 
-	_pso_hw_real *x_curr_local,//[_pso_Nx],
+	_pso_hw_real *local_x_curr,//[_pso_Nx],
 
-	_pso_hw_real *xref//[_pso_Nx*_pso_Nu], 
-	// _pso_hw_real *uref,//[_pso_n_U],
-	// _pso_hw_real *xss//[_pso_Nx]
+	_pso_hw_real *local_xref,//[_pso_Nx*_pso_Nu], 
+	_pso_hw_real *local_f_ind,//[_pso_n_U],
+	_pso_hw_real *local_fx//[_pso_n_U],
 );
 // ---------------------------------------------------
 #ifdef PSO_CANON
@@ -202,17 +217,33 @@ void updateParticles(
 #endif
 // ---------------------------------------------------
 void updateParticlesWithDuConstrains(
-	_pso_hw_real *u_curr
+	_pso_hw_real *local_u_curr,
 
-//	_pso_hw_real global_min[],
+	_pso_hw_real local_w,
 
-	// _pso_hw_real *_x[][_pso_Nu*_pso_n_U], 
-	// _pso_hw_real *_y[][_pso_Nu*_pso_n_U], 
-	// _pso_hw_real *_v[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real **_x,
-	// _pso_hw_real **_y,
-	// _pso_hw_real **_v
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
+	_pso_hw_real *local_v,
+
+	_pso_hw_real *local_global_min,
+
+	_pso_hw_real *local_x_max_first,
+	_pso_hw_real *local_x_min_first,
+
+	_pso_hw_real *local_du_max,
+	_pso_hw_real *local_du_min,
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min
 );
 
+// ---------------------------------------------------
+void detectGlobalMinimum(
+	_pso_hw_real *local_find,//[_pso_n_S], 
+	_pso_hw_real *local_bestfitness,
+	_pso_hw_real *local_global_min,
+	int interaction,
+	
+	_pso_hw_real *local_y
+);
 }
 #endif

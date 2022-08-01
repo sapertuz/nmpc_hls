@@ -1,4 +1,4 @@
-SimulationTime 1.5
+SimulationTime 15
 initial_state 7.0 10.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
 u_ref 0.0 0.0 0.0 0.0
 uss 0.0 0.0 0.0 0.0

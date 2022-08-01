@@ -6,58 +6,49 @@
 
 using namespace pso_solver;
 
+const unsigned int n_S = _pso_n_S; 	// number of particles
+//System * controled_system;
 
-_pso_hw_real w;
+// const int kpso = _KPSO;
+// const int stable_zero;
+const int particle_last_best = 0;
+const int particle_stable_zero = 1;
 
-_pso_hw_real threshold;
-int stop_criteria;
+// PSO Parameters
+// const unsigned int	_pso_maxiter = _pso_maxiter;
+const _pso_hw_real 	_pso_max_v = _max_v;
+const _pso_hw_real 	_pso_min_v = -_max_v;
+const _pso_hw_real 	_pso_w0 = _w0; // initial weight
+const _pso_hw_real	_pso_wf = _wf; // final weight
+const _pso_hw_real	_pso_slope = _slope;
+const _pso_hw_real	_pso_c1 = _c1; // cognitive coefficient
+const _pso_hw_real	_pso_c2 = _c2; // social coefficient
 
-_pso_hw_real x_max_first[_pso_n_U];
-_pso_hw_real x_min_first[_pso_n_U];
-
-
+const _pso_hw_real *_pso_u_max(_u_max);
+const _pso_hw_real *_pso_u_min(_u_min);
 const _pso_hw_real *_pso_uss_local(_uss);//[_pso_n_U];
-const _pso_hw_real *_pso_u_min(_u_min);//[_pso_n_U];
-const _pso_hw_real *_pso_u_max(_u_max);//[_pso_n_U];
-const _pso_hw_real *_pso_du_max(_du_max);//[_pso_n_U];
-_pso_hw_real _pso_du_min[_pso_n_U];//[_pso_n_U];
 
-// Particles
-#ifdef __SYNTHESIS__
-	_pso_hw_real x[_pso_n_S * _pso_Nu*_pso_n_U];
-	_pso_hw_real y[_pso_n_S * _pso_Nu*_pso_n_U];
-	_pso_hw_real v[_pso_n_S * _pso_Nu*_pso_n_U];
-#else
-	//_pso_hw_real bestfitness[_pso_maxiter];
-	//_pso_hw_real global_min[Nu*n_U];
-	_pso_hw_real *x;
-	_pso_hw_real *y;
-	_pso_hw_real *v;
-#endif
-	int valid_particle[_pso_n_S];
-	int number_of_active_particles;
+// const _pso_hw_real *_pso_u_min(_u_min);//[_pso_n_U];
+// const _pso_hw_real *_pso_u_max(_u_max);//[_pso_n_U];
 
-	_pso_hw_real f_ind[_pso_n_S];
-	_pso_hw_real fx[_pso_n_S];
-	_pso_hw_real bestfitness[_pso_maxiter];
-	_pso_hw_real global_min[_pso_Nu*_pso_n_U];
-	//_pso_hw_real previous_control[_Parametrization];
+const _pso_hw_real _pso_init_v = _max_v*0.1; // initial velocity
+
+// Controlled System Configuration
+const unsigned int Nh = _pso_Nh;
+const unsigned int Nx = _pso_Nx;
+const unsigned int n_U = _pso_n_U;
+const unsigned int Nu = _pso_Nu;
+const unsigned int part_S = Nu*n_U;
+// _pso_hw_real u_from_parameters[_N*_pso_n_U];
 
 
-	// _pso_system_t current_system;
-	// _pso_randCore_t randGen;
-
-	// const float pso_rand_min = 0.0f;
-	// const float pso_rand_max = 1.0f;
-	
-	// Pseudo Random Core Generator
-	typedef pseudoRand_gen<_pso_hw_real> _pso_randCore_t;
-	// _pso_randCore_t randGen(
-	// 	(const float)pso_rand_min, 
-	// 	(const float)pso_rand_max
-	// );
-	_pso_randCore_t rand_core;
-
+// Pseudo Random Core Generator
+typedef pseudoRand_gen<_pso_hw_real> _pso_randCore_t;
+// _pso_randCore_t randGen(
+// 	(const float)pso_rand_min, 
+// 	(const float)pso_rand_max
+// );
+_pso_randCore_t rand_core;
 
 // ---------------------------------------------------
 
@@ -74,7 +65,48 @@ int pso_solver::execute(
 	_pso_hw_real *new_best,//[_pso_Nu*_pso_n_U],
 	_pso_hw_real *J//[1]
 ){
-	
+
+	_pso_hw_real w;
+
+	_pso_hw_real threshold;
+	int stop_criteria;
+
+	// _pso_hw_real x_max_first[_pso_n_U];
+	// _pso_hw_real x_min_first[_pso_n_U];
+
+
+	_pso_hw_real *_pso_du_max((_pso_hw_real *)_du_max);//[_pso_n_U];
+	_pso_hw_real _pso_du_min[_pso_n_U];//[_pso_n_U];
+
+// Particles
+#ifdef __SYNTHESIS__
+	_pso_hw_real x[_pso_n_S * _pso_Nu*_pso_n_U];
+	_pso_hw_real y[_pso_n_S * _pso_Nu*_pso_n_U];
+	_pso_hw_real v[_pso_n_S * _pso_Nu*_pso_n_U];
+#else
+	//_pso_hw_real bestfitness[_pso_maxiter];
+	//_pso_hw_real global_min[Nu*n_U];
+	_pso_hw_real *x;
+	_pso_hw_real *y;
+	_pso_hw_real *v;
+#endif
+	bool valid_particle[_pso_n_S];
+	int number_of_active_particles;
+
+	_pso_hw_real f_ind[_pso_n_S];
+	_pso_hw_real fx[_pso_n_S];
+	_pso_hw_real bestfitness[_pso_maxiter];
+	_pso_hw_real global_min[_pso_Nu*_pso_n_U];
+	_pso_hw_real _pso_x_min_first[_pso_n_U], _pso_x_max_first[_pso_n_U];
+	//_pso_hw_real previous_control[_Parametrization];
+
+
+	// _pso_system_t current_system;
+	// _pso_randCore_t randGen;
+
+	// const float pso_rand_min = 0.0f;
+	// const float pso_rand_max = 1.0f;
+
 #pragma HLS ALLOCATION operation instances=hadd limit=2
 #pragma HLS ALLOCATION operation instances=hsub limit=2
 #pragma HLS ALLOCATION operation instances=hmul limit=2
@@ -117,29 +149,33 @@ int pso_solver::execute(
 	// uref_local = (_pso_hw_real *) malloc(n_U*sizeof(_pso_hw_real));
 	// xss_local = (_pso_hw_real *) malloc(Nx*sizeof(_pso_hw_real));
 #endif
-{
-#pragma HLS dataflow
 
-	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(u_curr_local, 	(_pso_hw_real *)u_curr);
-	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(x_curr_local, 	(_pso_hw_real *)x_curr);
-	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx*_pso_Nh>(xref_local, (_pso_hw_real *)xref);
-	// memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(uref_local, 	(_pso_hw_real *)uref);
-	// memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(xss_local, 		(_pso_hw_real *)xss);
 
-	w = _pso_w0;
-	pso_solver::calculate_du_min();
+	pso_solver::initializeParticles_set(
+		u_curr,
+		x_curr,
+		xref,
+		last_best,
 
-	pso_solver::initializeConstrains(u_curr_local);
-    pso_solver::initializeParticlesWithDuConstrains(u_curr_local);
+		x,y,v,
 
-	// equalizeParticles(iteration);
+		xref_local,
+		f_ind,
+		w,
 
-    pso_solver::initializeLastBestKPSO(last_best, particle_last_best);
+		u_curr_local,
+		x_curr_local,
 
-	pso_solver::initializeStableZero(u_curr_local, particle_stable_zero);
+		_pso_du_min,
+		_pso_du_max,
+		(_pso_hw_real *)_pso_u_min,
+		(_pso_hw_real *)_pso_u_max,
+		_pso_x_min_first,
+		_pso_x_max_first,
+		(_pso_hw_real *)_pso_uss_local,
+		valid_particle
+	);
 
-    pso_solver::initializeBestLocalFitness();
-}
 	// ITERATIVE PROCESS
 	unsigned int k = 0;  // index of iteration
 
@@ -156,19 +192,45 @@ int pso_solver::execute(
 
 	while (k < _pso_maxiter) {
         pso_solver::evaluateFitnessAndDetectLocalBest(
-			// x, 
-			// y, 
+			x, 
+			y, 
+			
 			x_curr_local, 
-			xref_local
-			// uref_local, 
-			// xss_local
+
+			xref_local,
+			f_ind,
+			fx
 		);
 
         // Global Minimum detection
-		best_pos = pso_solver::detectGlobalMinimum(k);
-		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(global_min, (_pso_hw_real *)&y[best_pos * part_S]);
+		// best_pos = pso_solver::detectGlobalMinimum(k);
+		pso_solver::detectGlobalMinimum(
+			f_ind,
+			bestfitness,
+			global_min,
+			k,
+			y
+		);
+		// memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(global_min, (_pso_hw_real *)&y[best_pos * part_S]);
 
-        pso_solver::updateParticlesWithDuConstrains(u_curr_local);    
+        pso_solver::updateParticlesWithDuConstrains(
+			u_curr_local,
+			w,
+
+			x,
+			y,
+			v,
+
+			global_min,
+
+			_pso_x_max_first,
+			_pso_x_min_first,
+
+			_pso_du_max,
+			_pso_du_min,
+			(_pso_hw_real *)_pso_u_max,
+			(_pso_hw_real *)_pso_u_min
+		);    
 #ifdef DEBUG_PSO
 		std::cout << "[" << k << "] ";
 		std::cout << "\t"; print_formatted_float_array(&global_min[0], n_U, 2, 6);
@@ -204,6 +266,105 @@ int pso_solver::execute(
 	return k;
 }
 
+void pso_solver::initializeParticles_set(
+	// Top Level inputs (FIFO Streams)
+	volatile _pso_hw_real *u_curr,
+	volatile _pso_hw_real *x_curr,
+	volatile _pso_hw_real *xref,
+	volatile _pso_hw_real *last_best,
+
+	// Particle Data Memory
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
+	_pso_hw_real *local_v,
+
+	// Particle Variables
+	_pso_hw_real *xref_local,
+	_pso_hw_real *f_ind_local,
+	_pso_hw_real &w,
+
+	// Local memories for system constraints created now
+	_pso_hw_real *u_curr_local,
+	_pso_hw_real *x_curr_local,
+
+	// Local memories for system constraints created now
+	_pso_hw_real *local_du_min,
+	_pso_hw_real *local_du_max,
+	_pso_hw_real *local_u_min,
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_x_min_first,
+	_pso_hw_real *local_x_max_first,
+	_pso_hw_real *local_uss,
+	
+	bool *valid_particle
+){
+
+	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(u_curr_local, 	(_pso_hw_real *)u_curr);
+	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(x_curr_local, 	(_pso_hw_real *)x_curr);
+	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx*_pso_Nh>(xref_local, (_pso_hw_real *)xref);
+	// memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(uref_local, 	(_pso_hw_real *)uref);
+	// memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(xss_local, 		(_pso_hw_real *)xss);
+
+	w = _pso_w0;
+	pso_solver::calculate_du_min(
+		local_du_min,
+		local_du_max
+	);
+
+	pso_solver::initializeConstrains(
+		u_curr_local,
+		local_du_max,
+		local_du_min,
+		local_u_max,
+		local_u_min,
+
+		local_x_max_first,
+		local_x_min_first
+	);
+    pso_solver::initializeParticlesWithDuConstrains(
+		u_curr_local,
+		local_du_max,
+		
+		local_u_max,
+		local_u_min,
+
+		local_x,
+		local_y,
+		local_v,
+		
+		valid_particle
+	);
+
+	// equalizeParticles(iteration);
+
+    pso_solver::initializeLastBestKPSO(
+		last_best, 
+	
+		local_x_max_first,
+		local_x_min_first,
+		
+		local_x,
+
+		particle_last_best
+	);
+
+	pso_solver::initializeStableZero(
+		local_uss,
+		u_curr_local, 
+
+		local_u_max,
+		local_u_min,
+		local_du_max,
+		local_du_min,
+		
+		local_x,
+
+		particle_stable_zero
+	);
+
+    // pso_solver::initializeBestLocalFitness();
+	memset_loop<_pso_hw_real>(f_ind_local, (const _pso_hw_real)H_MAX, n_S);
+}
 // ---------------------------------------------------
 
 void pso_solver::rand_real(_pso_hw_real &rand_value){
@@ -221,96 +382,82 @@ void pso_solver::rand_real(_pso_hw_real &rand_value){
 
 // ---------------------------------------------------
 
-_pso_hw_real  pso_solver::min_array(
-	_pso_hw_real *array,//[_pso_n_S], 
-	int * pos
+void  pso_solver::detectGlobalMinimum(
+	_pso_hw_real *local_find,//[_pso_n_S], 
+	_pso_hw_real *local_bestfitness,
+	_pso_hw_real *local_global_min,
+	int interaction,
+	
+	_pso_hw_real *local_y
 ){
 	//[bestfitness(k), p] = min(f_ind);
 #pragma HLS inline
-	_pso_hw_real min = array[0];
-	int pos_temp = 0;
+	_pso_hw_real min = local_find[0];
+	int best_pos = 0;
 	for (unsigned int i = 1; i < n_S; ++i) {
-        if(array[i] < min) {
-			min = array[i];
-			pos_temp = i;
+        if(local_find[i] < min) {
+			min = local_find[i];
+			best_pos = i;
         }
 	}
-	*pos = pos_temp;
-	return min;
+	local_bestfitness[interaction] = min;
+	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(local_global_min, (_pso_hw_real *)&local_y[best_pos * part_S]);
 }
 
 // ---------------------------------------------------
 
 void pso_solver::initializeConstrains(
-	volatile _pso_hw_real *u_curr
+	volatile _pso_hw_real *u_curr,
+	_pso_hw_real *local_du_max,
+	_pso_hw_real *local_du_min,
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min,
+
+	_pso_hw_real *local_x_max_first,
+	_pso_hw_real *local_x_min_first
 ){
 	// Initialize constrains based on current state
 #pragma HLS inline
 	initializeConstrains_loop: for (unsigned int i = 0; i < n_U; ++i){
 		_pso_hw_real u_curr_tmp = u_curr[i];
 
-        _pso_hw_real x_max_first_temp = u_curr_tmp + _pso_du_max[i]; //controled_system->acc_max[i];
-		_pso_hw_real x_min_first_temp = u_curr_tmp + _pso_du_min[i];//controled_system->acc_min[i];        
+        _pso_hw_real x_max_first_temp = u_curr_tmp + local_du_max[i]; //controled_system->acc_max[i];
+		_pso_hw_real x_min_first_temp = u_curr_tmp + local_du_min[i];//controled_system->acc_min[i];        
 
-		x_max_first[i] = (x_max_first_temp > _pso_u_max[i]) ? _pso_u_max[i]: x_max_first_temp;
-		x_min_first[i] = (x_min_first_temp < _pso_u_min[i])? _pso_u_min[i]: x_min_first_temp;	
+		local_x_max_first[i] = (x_max_first_temp > local_u_max[i]) ? local_u_max[i]: x_max_first_temp;
+		local_x_min_first[i] = (x_min_first_temp < local_u_min[i])? local_u_min[i]: x_min_first_temp;	
 	}
 }
 
 // ---------------------------------------------------
 
 void pso_solver::calculate_du_min(
+	_pso_hw_real *_local_du_min,
+	_pso_hw_real *_local_du_max
 ){
 #pragma HLS inline
 	calculate_du_min_loop: for (unsigned i = 0; i < n_U; i++)
 	{
-		_pso_du_min[i] = -_pso_du_max[i];
+		_local_du_min[i] = -_local_du_max[i];
 	}
 	
 }
 
 // ---------------------------------------------------
 
-void pso_solver::initializeBestLocalFitness(){
-#pragma HLS inline
-	// Initialize best local fitness 
-	memset_loop<_pso_hw_real>(f_ind, (const _pso_hw_real)H_MAX, n_S);
-	// for (unsigned int i = 0; i < n_S; ++i) { 
-	// 	f_ind[i] = H_MAX;
-	// }
-}
-
-// ---------------------------------------------------
-
-int pso_solver::detectGlobalMinimum(
-	int iter
-){
-	int pos;
-
-	// Global Minimum detection
-    bestfitness[iter] = pso_solver::min_array(f_ind, &pos);
-    
-	// // Global minimum position
-    return pos;
-
-}
-
-// ---------------------------------------------------
-
 void pso_solver::equalizeParticles(
-//	_pso_hw_real _x[][_pso_Nu*_pso_n_U],
-	// _pso_hw_real **_x,
+	_pso_hw_real *local_x,
 	_pso_hw_real iteration
 ){
 	_pso_hw_real x_tmp;
 	if (iteration == 0){	
-    for (unsigned int i = 0; i < n_S; ++i) {
-		for (unsigned int k = 1; k < Nu; ++k) {
+    equalizeParticles_loop_S: for (unsigned int i = 0; i < n_S; ++i) {
+		equalizeParticles_loop_N:for (unsigned int k = 1; k < Nu; ++k) {
 	 	   	int idx1 = k*n_U;
 	 	   	int idx2 = 0;
-			for (unsigned int j = 0; j < n_U; ++j) {
-				x_tmp = x[i*part_S + idx2];
-                x[i*part_S + idx1] = x_tmp;
+			equalizeParticles_loop_x:for (unsigned int j = 0; j < n_U; ++j) {
+				x_tmp = local_x[i*part_S + idx2];
+                local_x[i*part_S + idx1] = x_tmp;
 				idx1++;
 				idx2++;
             }
@@ -322,14 +469,16 @@ void pso_solver::equalizeParticles(
 // ---------------------------------------------------
 
 _pso_hw_real pso_solver::verifyControlConstrains(
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min,
 	_pso_hw_real value, 
 	int pos
 ){
 #pragma HLS inline
-	_pso_hw_real return_value;
+	_pso_hw_real return_value = value;
 
-	return_value = (value > _pso_u_max[pos]) ? _pso_u_max[pos] : value;
-	return_value = (value < _pso_u_min[pos]) ? _pso_u_min[pos] : value;
+	return_value = (return_value > local_u_max[pos]) ? local_u_max[pos] : return_value;
+	return_value = (return_value < local_u_min[pos]) ? local_u_min[pos] : return_value;
 
 	return return_value;
 }
@@ -369,15 +518,17 @@ void pso_solver::detectInvalidParticles(
 // ---------------------------------------------------
 
 void pso_solver::initializeParticlesWithDuConstrains(
-	volatile _pso_hw_real *u_curr 
-	//volatile _pso_hw_real *uss,
+	_pso_hw_real *u_curr,
 
-	// _pso_hw_real _x[][_pso_Nu*_pso_n_U], 
-	// _pso_hw_real _y[][_pso_Nu*_pso_n_U], 
-	// _pso_hw_real _v[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real ** _x,
-	// _pso_hw_real ** _y,
-	// _pso_hw_real ** _v
+	_pso_hw_real *local_du_max,
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min,
+	
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
+	_pso_hw_real *local_v,
+	
+	bool *valid_particle
 ){
 // INITIALIZATION OF PARTICLES WITH Delta u CONTRAINS FOR MPC
 //#pragma HLS inline
@@ -389,23 +540,29 @@ void pso_solver::initializeParticlesWithDuConstrains(
 	_pso_hw_real x_ant[_pso_n_U];
 	_pso_hw_real x_ant_tmp[_pso_n_U];
 
-	initializeS_du_loop_top:for (unsigned int i = 0; i < n_S; ++i) {
+	initializeS_du_loop_S:for (unsigned int i = 0; i < n_S; ++i) {
 		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant_tmp, (_pso_hw_real *)u_curr);
-		for (unsigned int j = 0; j < Nu; ++j) {
+		initializeS_du_loop_N:for (unsigned int j = 0; j < Nu; ++j) {
 			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant, (_pso_hw_real *)x_ant_tmp);
-			for (unsigned int k = 0; k < n_U; ++k) {
+			initializeS_du_loop_x:for (unsigned int k = 0; k < n_U; ++k) {
 // #pragma HLS pipeline II=11 rewind
 				int idx = j*n_U + k;
 				_pso_hw_real rand_tmp;
+				_pso_hw_real local_du_max_k = local_du_max[k];
 				pso_solver::rand_real(rand_tmp);
-				_pso_hw_real du_tmp = rand_tmp*(_pso_hw_real)2.0*_pso_du_max[k] - _pso_du_max[k];
+				_pso_hw_real du_tmp = rand_tmp*(_pso_hw_real)2.0*local_du_max_k - local_du_max_k;
 		        _pso_hw_real x_tmp = x_ant[k] + du_tmp; //random->read(); 
 		        // _pso_hw_real x_tmp = ( x_ant[k] + (-du_max[k]) ) + ((_pso_hw_real)2.0*du_max[k]) * rand_tmp; //random->read(); 
-				x_tmp = pso_solver::verifyControlConstrains(x_tmp, k);
-                x[i*part_S + idx] = x_tmp;
-				y[i*part_S + idx] = x_tmp; // uss_local[k];
-		        v[i*part_S + idx] = _pso_init_v;
-                valid_particle[i] = 1;
+				x_tmp = pso_solver::verifyControlConstrains(
+					local_u_max,
+					local_u_min,
+					x_tmp, 
+					k
+				);
+                local_x[i*part_S + idx] = x_tmp;
+				local_y[i*part_S + idx] = x_tmp; // uss_local[k];
+		        local_v[i*part_S + idx] = _pso_init_v;
+                valid_particle[i] = true;
 				x_ant_tmp[k] = x_tmp;
 				idx++;
 		    }
@@ -453,34 +610,43 @@ void  pso_solver::initializeParticles(
 
 void pso_solver::initializeLastBestKPSO(
 	_pso_hw_real volatile *last_best,
-	// _pso_hw_real _x[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real **_x,
-	uint8_t index
+
+	_pso_hw_real *local_x_max_first,
+	_pso_hw_real *local_x_min_first,
+	_pso_hw_real *local_x,
+
+	int index
 ){
 // #pragma HLS inline
 	// Uses KPSO (best last position)
 
 	for (unsigned int i = 0; i < n_U; i++){
 		_pso_hw_real last_best_tmp = last_best[i];
-		_pso_hw_real x_local;
-		x_local = (last_best_tmp > x_max_first[i]) ? x_max_first[i] : last_best_tmp;
-		x_local = (last_best_tmp < x_min_first[i]) ? x_max_first[i] : last_best_tmp;
-		x[index*part_S + i] = x_local;
+		_pso_hw_real x_i;
+		x_i = (last_best_tmp > local_x_max_first[i]) ? local_x_max_first[i] : last_best_tmp;
+		x_i = (last_best_tmp < local_x_min_first[i]) ? local_x_max_first[i] : last_best_tmp;
+		local_x[index*part_S + i] = x_i;
 	}
 	
 	for (unsigned int i = n_U; i < (Nu*n_U); i++) {
-		x[index*part_S + i] = last_best[i];			
+		local_x[index*part_S + i] = last_best[i];			
 	}
 }
 
 // ---------------------------------------------------
 
 void pso_solver::initializeStableZero(
-//	_pso_hw_real *uss, 
-	_pso_hw_real *u_curr, 	
-	// _pso_hw_real _x[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real **_x,
-	uint8_t index
+	_pso_hw_real *uss_local, 
+	_pso_hw_real *u_curr,
+
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min,
+	_pso_hw_real *local_du_max,
+	_pso_hw_real *local_du_min,
+
+	_pso_hw_real *local_x,
+	
+	int index
 ){
 // #pragma HLS inline
 // Starts one particle with all Zeros for 
@@ -493,14 +659,19 @@ void pso_solver::initializeStableZero(
 		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant, (_pso_hw_real*)x_ant_tmp);
         for (unsigned int i = 0; i < n_U; ++i) {
         	idx = k*n_U + i;
-		    _pso_hw_real x_tmp = _pso_uss_local[i];
+		    _pso_hw_real x_tmp = uss_local[i];
 			// _pso_hw_real comp_tmp = (k == 0) ? x_tmp - u_curr[i] : x_tmp - x_ant[i];
 			_pso_hw_real comp_tmp = x_tmp - x_ant[i] ;
 			
-			x_tmp = (comp_tmp > _pso_du_max[i]) ? _pso_du_max[i] : x_tmp;
-			x_tmp = (comp_tmp < _pso_du_min[i]) ? _pso_du_min[i] : x_tmp;
+			x_tmp = (comp_tmp > local_du_max[i]) ? local_du_max[i] : x_tmp;
+			x_tmp = (comp_tmp < local_du_min[i]) ? local_du_min[i] : x_tmp;
 
-            x[index*part_S + idx] = pso_solver::verifyControlConstrains(x_tmp, i);
+            local_x[index*part_S + idx] = pso_solver::verifyControlConstrains(
+				local_u_max,
+				local_u_min,
+				x_tmp, 
+				i
+			);
 			x_ant_tmp[i] = x_tmp;
 			idx++;
         }
@@ -510,16 +681,14 @@ void pso_solver::initializeStableZero(
 // ---------------------------------------------------
 
 void pso_solver::evaluateFitnessAndDetectLocalBest(
-	// _pso_hw_real _x[][_pso_Nu*_pso_n_U], 
-	// _pso_hw_real _y[][_pso_Nu*_pso_n_U],
-	// _pso_hw_real **_x,
-	// _pso_hw_real **_y,
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
 
-	_pso_hw_real *x_curr_local,//[_pso_Nx],
+	_pso_hw_real *local_x_curr,//[_pso_Nx],
 
-	_pso_hw_real *xref//[_pso_Nx*_pso_Nu], 
-	// _pso_hw_real *uref,//[_pso_n_U],
-	// _pso_hw_real *xss//[_pso_Nx]
+	_pso_hw_real *local_xref,//[_pso_Nx*_pso_Nu], 
+	_pso_hw_real *local_f_ind,//[_pso_n_U],
+	_pso_hw_real *local_fx//[_pso_n_U],
 ){
 
 // #pragma HLS interface ap_bus  port=_x
@@ -550,11 +719,11 @@ void pso_solver::evaluateFitnessAndDetectLocalBest(
 // #pragma HLS unroll factor=5 skip_exit_check
         //if(valid_particle[i] == 1){
 		// current_system->nmpc_cost_function_topflow(x_curr_local, &x[i][0], xref, &fx[i]);
-		current_system.nmpc_cost_function_topflow(x_curr_local, &x[i*part_S], xref, &fx[i]);
+		current_system.nmpc_cost_function_topflow(local_xref, &local_x[i*part_S], local_xref, &local_fx[i]);
 		// fx[i] = rand_real();
-		if (fx[i] < f_ind[i]) {
-			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(&y[i*part_S], &x[i*part_S]);
-			f_ind[i] = fx[i];           
+		if (local_fx[i] < local_f_ind[i]) {
+			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(&local_y[i*part_S], &local_x[i*part_S]);
+			local_f_ind[i] = local_fx[i];           
 		}
         //}
     }
@@ -607,16 +776,23 @@ void pso_solver::updateParticles(
 // ---------------------------------------------------
 
 void pso_solver::updateParticlesWithDuConstrains(
-	_pso_hw_real *u_curr
+	_pso_hw_real *local_u_curr,
 
-//	_pso_hw_real global_min[],
+	_pso_hw_real local_w,
 
-	// _pso_hw_real *_x[][_pso_Nu*_pso_n_U], 
-	// _pso_hw_real *_y[][_pso_Nu*_pso_n_U], 
-	// _pso_hw_real *_v[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real **_x,
-	// _pso_hw_real **_y,
-	// _pso_hw_real **_v
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
+	_pso_hw_real *local_v,
+
+	_pso_hw_real *local_global_min,
+
+	_pso_hw_real *local_x_max_first,
+	_pso_hw_real *local_x_min_first,
+
+	_pso_hw_real *local_du_max,
+	_pso_hw_real *local_du_min,
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min
 ){
 
 	// Update particles
@@ -627,7 +803,7 @@ void pso_solver::updateParticlesWithDuConstrains(
 // #pragma HLS ALLOCATION operation instances=hadd 	  limit=1 
 // #pragma HLS ALLOCATION operation instances=hsub 	  limit=1 
 // #pragma HLS ALLOCATION function  instances=rand_real limit=1 
-		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant_tmp, (_pso_hw_real*)u_curr);
+		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant_tmp, (_pso_hw_real*)local_u_curr);
         //if(valid_particle[i] == 1){
     	 for (unsigned int j = 0; j < Nu; ++j) {
 			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant, (_pso_hw_real*)x_ant_tmp);
@@ -639,22 +815,31 @@ void pso_solver::updateParticlesWithDuConstrains(
 				pso_solver::rand_real(r1); //random->read();
                 pso_solver::rand_real(r2); //random->read();
 
-	            _pso_hw_real v_tmp = v[i*part_S + idx];
-	            _pso_hw_real x_tmp = x[i*part_S + idx];
+	            _pso_hw_real v_tmp = local_v[i*part_S + idx];
+	            _pso_hw_real x_tmp = local_x[i*part_S + idx];
 	            // v = w*v + c1*r1*(y-x) + c2*r2*(global_min - x)
-				_pso_hw_real v_new = w*v_tmp + _pso_c1*r1*(y[i*part_S + idx]-x_tmp) + _pso_c2*r2*(global_min[idx] - x_tmp);
+				_pso_hw_real v_new = local_w*v_tmp + _pso_c1*r1*(local_y[i*part_S + idx]-x_tmp) + \
+										_pso_c2*r2*(local_global_min[idx] - x_tmp);
 	            v_new = (v_new > _pso_max_v) ? _pso_max_v : v_new;
 	            v_new = (v_new < _pso_min_v) ? _pso_min_v : v_new;
-				v[i*part_S + idx] = v_new;
-	            
+				
 				_pso_hw_real x_ant_k = x_ant[k];
 				_pso_hw_real x_new = x_tmp + v_new;
-				_pso_hw_real x_tmp2 = 	(j==0) ? x_new : x_new - x_ant_k; //x[i][idx]-x[i][idx-1];
-				_pso_hw_real cmp_max = 	(j==0) ? x_max_first[k] : _pso_du_max[k];
-				_pso_hw_real cmp_min = 	(j==0) ? x_min_first[k] : _pso_du_min[k];
-				x_new = (x_tmp2 > cmp_max) ? x_ant_k + cmp_max : x_new;
-				x_new = (x_tmp2 < cmp_min) ? x_ant_k + cmp_min : x_new;
-                x[i*part_S + idx] = pso_solver::verifyControlConstrains(x_new, k);
+				// _pso_hw_real x_dx_tmp = (j==0) ? x_new : x_new - x_ant_k; //x[i][idx]-x[i][idx-1];
+				_pso_hw_real x_dx_tmp = x_new - x_ant_k; //x[i][idx]-x[i][idx-1];
+				_pso_hw_real cmp_max = 	(j==0) ? local_x_max_first[k] : local_du_max[k];
+				_pso_hw_real cmp_min = 	(j==0) ? local_x_min_first[k] : local_du_min[k];
+				x_new = (x_dx_tmp > cmp_max) ? x_ant_k + cmp_max : x_new;
+				x_new = (x_dx_tmp < cmp_min) ? x_ant_k + cmp_min : x_new;
+                x_new = pso_solver::verifyControlConstrains(
+					local_u_max,
+					local_u_min,
+					x_new, 
+					k
+				);
+				
+				local_x[i*part_S + idx] = x_new;
+				local_v[i*part_S + idx] = v_new;
 
 				x_ant_tmp[k] = x_new;
 	            
