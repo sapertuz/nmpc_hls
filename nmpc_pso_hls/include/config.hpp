@@ -17,9 +17,16 @@
 
 #ifdef __SYNTHESIS__
 #include "hls_math.h"
-typedef half _hw_top_real;
+#include "hls_stream.h"
+#include "ap_fixed.h"
+
+// typedef half _hw_top_real;
+typedef ap_fixed<32,17,AP_RND_INF,AP_SAT_SYM> _hw_top_real; // round to +/-inf and simmetrical saturation
+typedef half _hw_model_real;
+typedef hls::stream<_hw_top_real> _rand_real_stream;
 #else
 typedef float _hw_top_real;
+typedef float _hw_system_real;
 #endif
 
 // #ifdef PSO_CONFIG

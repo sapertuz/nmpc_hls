@@ -114,7 +114,7 @@ int nonlinear_solver_wrapper(
     // memcpy_loop_rolled<_hw_top_real, float, _Nx>(my_xss, (float *)xss );
     // memcpy_loop_rolled<_hw_top_real, float, _n_U>(my_uss, (float *)uss );
     
-    iterations = pso_solver::execute(    
+    iterations = execute(    
         my_x_curr, 
         my_u_curr, 
         iteration, 

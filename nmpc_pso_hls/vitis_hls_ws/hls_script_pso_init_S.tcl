@@ -4,7 +4,7 @@
 ## Copyright 1986-2021 Xilinx, Inc. All Rights Reserved.
 ############################################################
 set prj_name nmpc_solver_init_s
-set prj_top nonlinear_solver_wrapper
+set prj_top initializeParticles_set
 
 set ip_path "/home/chello/Documents/Vivado_WS/vitis_ip_repo"
 set workspace [pwd]
@@ -26,9 +26,10 @@ set_top $prj_top
 #     add_files $file
 # }
 
-add_files ${src_path}/hls_nonlinear_solver.cpp  -cflags $c_flags -csimflags $csim_tb_flags
+
 add_files ${src_path}/hls_pso.cpp               -cflags $c_flags -csimflags $csim_tb_flags
 
+add_files -tb ${src_path}/hls_nonlinear_solver.cpp  -cflags $c_flags -csimflags $csim_tb_flags
 add_files -tb ${src_path}/${main_name}.cpp -cflags $csim_tb_flags -csimflags $csim_tb_flags
 add_files -tb ${src_path}/aux_functions.cpp -cflags $csim_tb_flags -csimflags $csim_tb_flags
 
@@ -36,13 +37,16 @@ open_solution "solution_system" -flow_target vivado
 
 set_part {xczu3eg-sbva484-1-i}
 create_clock -period 10 -name default
+
 # config_compile -pipeline_loops 6
 config_interface -m_axi_addr64=0
-config_export -display_name sniffbot_nmpc -format ip_catalog -output $ip_path/sniffbot_nmpc.zip -rtl verilog -vendor tu-dresden -version 1.0
+config_rtl -reset state
+
+config_export -display_name $prj_name -format ip_catalog -output $ip_path/$prj_name.zip -rtl verilog -vendor tu-dresden -version 1.0
 
 # config_core DSP48 -latency 4
 
 # csim_design -argv $arg_str -clean -O -profile
 csynth_design
 # cosim_design -O -rtl vhdl
-# export_design -format ip_catalog
+export_design -format ip_catalog

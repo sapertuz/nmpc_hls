@@ -396,9 +396,24 @@ protected:
 #pragma HLS PIPELINE II=11
             current_x_hat = x_hat[j];
             current_x_ref = xref[j];
-            _system_hw_real tmp_err = (controlled_state[j] == 1) ? (current_x_hat - current_x_ref) : (_system_hw_real)0.0;
-            _system_hw_real Q_local = (i_step == N-1)? Qf[j] : Q[j];
-            penality = ((state_lower_limits[j] <= current_x_hat) && (current_x_hat <= state_upper_limits[j])) ? (_system_hw_real)Q_local : (_system_hw_real)1e4;
+            _system_hw_real tmp_err;
+            
+            if (controlled_state[j] == 1) 
+                tmp_err = (current_x_hat - current_x_ref);
+            else
+                tmp_err = (_system_hw_real)0.0;;
+
+            _system_hw_real Q_local;
+            
+            if (i_step == N-1)
+                Q_local = Qf[j];
+            else 
+                Q_local = Q[j];
+            if ((state_lower_limits[j] <= current_x_hat) && (current_x_hat <= state_upper_limits[j]))
+                penality = (_system_hw_real)Q_local;
+            else
+                penality = (_system_hw_real)1e4;
+
             Ji_out[j] = Ji_in[j] + penality*tmp_err*tmp_err;
         }
 #ifdef DEBUG_SYSTEM
@@ -427,7 +442,10 @@ protected:
 #pragma HLS pipeline II=9
             _system_hw_real current_uu = uu[j];
             _system_hw_real tmp_err = (current_uu - uss[j]);
-            penality = ((u_min[j] <= current_uu) && (current_uu <= u_max[j])) ? R[j] : (_system_hw_real)1e4;
+            if ((u_min[j] <= current_uu) && (current_uu <= u_max[j]))
+                penality = R[j];
+            else
+                penality = (_system_hw_real)1e4;
             Ji_out[j] = Ji_in[j] + penality*tmp_err*tmp_err;
         }
     }
@@ -460,13 +478,13 @@ void J_error(
     Ji_sum_loop: for (unsigned j = 0; j < _system_Nx; j++) {
 #pragma HLS pipeline off
         // J_local += Ji_mul[j];
-        Ji_acum += local_Ji[j];
+        Ji_acum = Ji_acum + (_system_hw_real)local_Ji[j];
     }
 
     Jui_sum_loop: for (unsigned j = 0; j < _system_n_U; j++) {
 #pragma HLS pipeline off
         // J_local += Jui_mul[j];
-        Jui_acum += local_Jui[j];
+        Jui_acum = Jui_acum + (_system_hw_real)local_Jui[j];
     }
     J[0] = Ji_acum + Jui_acum;
 #ifdef DEBUG_SYSTEM
@@ -520,7 +538,11 @@ void J_error(
 #pragma HLS pipeline II=6
             _system_hw_real single_x_hat = final_x[j];
             _system_hw_real tmp_err = (single_x_hat + (-final_xref[j]));
-            _system_hw_real penality = ((state_lower_limits[j] <= single_x_hat) && (single_x_hat <= state_upper_limits[j])) ? (_system_hw_real)1.0 : (_system_hw_real)1e4;
+            _system_hw_real penality;
+            if ((state_lower_limits[j] <= single_x_hat) && (single_x_hat <= state_upper_limits[j])) 
+                penality = (_system_hw_real)1.0;
+            else
+                penality = (_system_hw_real)1e4;
             Jf = penality*tmp_err*tmp_err;
             _system_hw_real J_mul = Qf[j]*Jf;
             J_local += J_mul;

@@ -31,8 +31,8 @@
 #define _pso_Nu 		_Nu
 
 // Pseudo random generator variables
-namespace pso_solver
-{
+// namespace pso_solver
+// {
 
 // ---------------------------------------------------
 int execute(
@@ -78,7 +78,7 @@ void initializeParticles_set(
 	// Particle Variables
 	_pso_hw_real *xref_local,
 	_pso_hw_real *f_ind_local,
-	_pso_hw_real &w,
+	// _pso_hw_real &w,
 
 	// Local memories for system constraints created now
 	_pso_hw_real *u_curr_local,
@@ -91,9 +91,13 @@ void initializeParticles_set(
 	_pso_hw_real *local_u_max,
 	_pso_hw_real *local_x_min_first,
 	_pso_hw_real *local_x_max_first,
-	_pso_hw_real *local_uss,
+	_pso_hw_real *local_uss
 	
-	bool *valid_particle
+	// ,bool *valid_particle
+
+#ifdef __SYNTHESIS__
+	,_rand_real_stream &__rand_port
+#endif
 );
 
 // ---------------------------------------------------
@@ -150,9 +154,13 @@ void initializeParticlesWithDuConstrains(
 
 	_pso_hw_real *local_x,
 	_pso_hw_real *local_y,
-	_pso_hw_real *local_v,
+	_pso_hw_real *local_v
 	
-	bool *valid_particle
+	// ,bool *valid_particle
+
+#ifdef __SYNTHESIS__
+	,_rand_real_stream &__rand_port
+#endif
 );
 
 #ifdef PSO_CANON
@@ -219,7 +227,7 @@ void updateParticles(
 void updateParticlesWithDuConstrains(
 	_pso_hw_real *local_u_curr,
 
-	_pso_hw_real local_w,
+	// _pso_hw_real local_w,
 
 	_pso_hw_real *local_x,
 	_pso_hw_real *local_y,
@@ -245,5 +253,5 @@ void detectGlobalMinimum(
 	
 	_pso_hw_real *local_y
 );
-}
+// }
 #endif

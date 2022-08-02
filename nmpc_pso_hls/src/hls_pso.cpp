@@ -4,7 +4,7 @@
 #include "hls_pseudorand.hpp"
 #include "aux_functions.hpp"
 
-using namespace pso_solver;
+// using namespace pso_solver;
 
 const unsigned int n_S = _pso_n_S; 	// number of particles
 //System * controled_system;
@@ -41,7 +41,6 @@ const unsigned int Nu = _pso_Nu;
 const unsigned int part_S = Nu*n_U;
 // _pso_hw_real u_from_parameters[_N*_pso_n_U];
 
-
 // Pseudo Random Core Generator
 typedef pseudoRand_gen<_pso_hw_real> _pso_randCore_t;
 // _pso_randCore_t randGen(
@@ -52,7 +51,7 @@ _pso_randCore_t rand_core;
 
 // ---------------------------------------------------
 
-int pso_solver::execute(
+int execute(
 	volatile _pso_hw_real x_curr[_pso_Nx], 
 	volatile _pso_hw_real u_curr[_pso_n_U], 
 	int iteration, 
@@ -66,7 +65,7 @@ int pso_solver::execute(
 	_pso_hw_real J[1]
 ){
 
-	_pso_hw_real w;
+	// _pso_hw_real w;
 
 	_pso_hw_real threshold;
 	int stop_criteria;
@@ -148,8 +147,14 @@ int pso_solver::execute(
 	// uref_local = (_pso_hw_real *) malloc(n_U*sizeof(_pso_hw_real));
 	// xss_local = (_pso_hw_real *) malloc(Nx*sizeof(_pso_hw_real));
 #endif
+	#ifdef __SYNTHESIS__
+		_rand_real_stream __rand_port;
+		// _pso_hw_real rand_value;
+		// rand_real(rand_value);
+		// __rand_port.write(rand_value)
+	#endif
 
-	pso_solver::initializeParticles_set(
+	initializeParticles_set(
 		u_curr,
 		x_curr,
 		xref,
@@ -159,7 +164,7 @@ int pso_solver::execute(
 
 		xref_local,
 		f_ind,
-		w,
+		// w,
 
 		u_curr_local,
 		x_curr_local,
@@ -170,8 +175,11 @@ int pso_solver::execute(
 		(_pso_hw_real *)_pso_u_max,
 		_pso_x_min_first,
 		_pso_x_max_first,
-		(_pso_hw_real *)_pso_uss_local,
-		valid_particle
+		(_pso_hw_real *)_pso_uss_local
+		// ,valid_particle
+#ifdef __SYNTHESIS__
+		, __rand_port
+#endif
 	);
 
 	// ITERATIVE PROCESS
@@ -189,7 +197,7 @@ int pso_solver::execute(
 #endif
 
 	while (k < _pso_maxiter) {
-        pso_solver::evaluateFitnessAndDetectLocalBest(
+        evaluateFitnessAndDetectLocalBest(
 			x, 
 			y, 
 			
@@ -201,8 +209,8 @@ int pso_solver::execute(
 		);
 
         // Global Minimum detection
-		// best_pos = pso_solver::detectGlobalMinimum(k);
-		pso_solver::detectGlobalMinimum(
+		// best_pos = detectGlobalMinimum(k);
+		detectGlobalMinimum(
 			f_ind,
 			bestfitness,
 			global_min,
@@ -211,9 +219,9 @@ int pso_solver::execute(
 		);
 		// memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(global_min, (_pso_hw_real *)&y[best_pos * part_S]);
 
-        pso_solver::updateParticlesWithDuConstrains(
+        updateParticlesWithDuConstrains(
 			u_curr_local,
-			w,
+			// w,
 
 			x,
 			y,
@@ -240,7 +248,8 @@ int pso_solver::execute(
         //detectInvalidParticles(k, best_pos);
 
 		k++;
-		w+= _pso_slope;
+		
+		// w+= _pso_slope;
 	}
 
 
@@ -264,7 +273,7 @@ int pso_solver::execute(
 	return k;
 }
 
-void pso_solver::initializeParticles_set(
+void initializeParticles_set(
 	// Top Level inputs (FIFO Streams)
 	volatile _pso_hw_real *u_curr,
 	volatile _pso_hw_real *x_curr,
@@ -272,67 +281,63 @@ void pso_solver::initializeParticles_set(
 	volatile _pso_hw_real *last_best,
 
 	// Particle Data Memory
-	_pso_hw_real *local_x,
-	_pso_hw_real *local_y,
-	_pso_hw_real *local_v,
+	_pso_hw_real local_x[_pso_n_S * _pso_Nu*_pso_n_U],
+	_pso_hw_real local_y[_pso_n_S * _pso_Nu*_pso_n_U],
+	_pso_hw_real local_v[_pso_n_S * _pso_Nu*_pso_n_U],
 
 	// Particle Variables
-	_pso_hw_real *xref_local,
-	_pso_hw_real *f_ind_local,
-	_pso_hw_real &w,
+	_pso_hw_real xref_local[_pso_Nx*_pso_Nh],
+	_pso_hw_real f_ind_local[_pso_n_S],
+	// _pso_hw_real &w,
 
 	// Local memories for system constraints created now
-	_pso_hw_real *u_curr_local,
-	_pso_hw_real *x_curr_local,
+	_pso_hw_real u_curr_local[_pso_n_U],
+	_pso_hw_real x_curr_local[_pso_Nx],
 
 	// Local memories for system constraints created now
-	_pso_hw_real *local_du_min,
-	_pso_hw_real *local_du_max,
-	_pso_hw_real *local_u_min,
-	_pso_hw_real *local_u_max,
-	_pso_hw_real *local_x_min_first,
-	_pso_hw_real *local_x_max_first,
-	_pso_hw_real *local_uss,
+	_pso_hw_real local_du_min[_pso_n_U],
+	_pso_hw_real local_du_max[_pso_n_U],
+	_pso_hw_real local_u_min[_pso_n_U],
+	_pso_hw_real local_u_max[_pso_n_U],
+	_pso_hw_real local_x_min_first[_pso_n_U],
+	_pso_hw_real local_x_max_first[_pso_n_U],
+	_pso_hw_real local_uss[_pso_n_U]
 	
-	bool *valid_particle
+	// ,bool valid_particle[_pso_n_S]
+
+#ifdef __SYNTHESIS__
+	,_rand_real_stream &__rand_port
+#endif
 ){
 #pragma HLS interface mode=ap_fifo port=u_curr
 #pragma HLS interface mode=ap_fifo port=x_curr
 #pragma HLS interface mode=ap_fifo port=xref
 #pragma HLS interface mode=ap_fifo port=last_best
 
-#pragma HLS interface mode=bram storage_type=ram_t2p name=x port=local_x
-#pragma HLS interface mode=bram storage_type=ram_t2p name=y port=local_y
-#pragma HLS interface mode=bram storage_type=ram_t2p name=v port=local_v
-#pragma HLS bind_storage type=ram_t2p impl=bram 			variable=local_x
-#pragma HLS bind_storage type=ram_t2p impl=bram 			variable=local_y
-#pragma HLS bind_storage type=ram_t2p impl=bram 			variable=local_v
+#pragma HLS interface mode=bram storage_type=RAM_1WNR name=x port=local_x
+#pragma HLS interface mode=bram storage_type=RAM_1WNR name=y port=local_y
+#pragma HLS interface mode=bram storage_type=RAM_1WNR name=v port=local_v
 
-#pragma HLS interface mode=bram 				port=xref_local
-#pragma HLS interface mode=bram 				port=f_ind_local
-#pragma HLS interface mode=bram					port=w
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=xref_local
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=f_ind_local
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=w
+#pragma HLS interface mode=bram storage_type=RAM_1WNP	bundle=system_constraints	port=xref_local 
+#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=f_ind_local
+#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=u_curr_local
+#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=x_curr_local
+#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_du_min
+#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_du_max
+#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_u_min
+#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_u_max
+#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_x_min_first
+#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_x_max_first
+#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_uss
 
-#pragma HLS interface mode=bram 				port=local_du_min
-#pragma HLS interface mode=bram 				port=local_du_max
-#pragma HLS interface mode=bram 				port=local_u_min
-#pragma HLS interface mode=bram 				port=local_u_max
-#pragma HLS interface mode=bram 				port=local_x_min_first
-#pragma HLS interface mode=bram 				port=local_x_max_first
-#pragma HLS interface mode=bram 				port=local_uss
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_du_min
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_du_max
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_u_min
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_u_max
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_x_min_first
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_x_max_first
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_uss
+// #pragma HLS interface mode=bram		port=valid_particle
+
+// #pragma HLS interface mode=ap_stable	port=w
 
 
-#pragma HLS interface mode=bram 				port=valid_particle
-#pragma HLS bind_storage type=ram2p impl=bram 	variable=valid_particle
+#ifdef __SYNTHESIS__
+#pragma HLS interface mode=ap_fifo port=__rand_port
+#endif
 
 	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(u_curr_local, 	(_pso_hw_real *)u_curr);
 	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(x_curr_local, 	(_pso_hw_real *)x_curr);
@@ -340,13 +345,13 @@ void pso_solver::initializeParticles_set(
 	// memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(uref_local, 	(_pso_hw_real *)uref);
 	// memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(xss_local, 		(_pso_hw_real *)xss);
 
-	w = _pso_w0;
-	pso_solver::calculate_du_min(
+	// w = _pso_w0;
+	calculate_du_min(
 		local_du_min,
 		local_du_max
 	);
 
-	pso_solver::initializeConstrains(
+	initializeConstrains(
 		u_curr_local,
 		local_du_max,
 		local_du_min,
@@ -356,7 +361,7 @@ void pso_solver::initializeParticles_set(
 		local_x_max_first,
 		local_x_min_first
 	);
-    pso_solver::initializeParticlesWithDuConstrains(
+    initializeParticlesWithDuConstrains(
 		u_curr_local,
 		local_du_max,
 		
@@ -365,14 +370,18 @@ void pso_solver::initializeParticles_set(
 
 		local_x,
 		local_y,
-		local_v,
+		local_v
 		
-		valid_particle
+		// ,valid_particle
+
+#ifdef __SYNTHESIS__
+		,__rand_port
+#endif		
 	);
 
 	// equalizeParticles(iteration);
 
-    pso_solver::initializeLastBestKPSO(
+    initializeLastBestKPSO(
 		last_best, 
 	
 		local_x_max_first,
@@ -383,7 +392,7 @@ void pso_solver::initializeParticles_set(
 		particle_last_best
 	);
 
-	pso_solver::initializeStableZero(
+	initializeStableZero(
 		local_uss,
 		u_curr_local, 
 
@@ -397,12 +406,12 @@ void pso_solver::initializeParticles_set(
 		particle_stable_zero
 	);
 
-    // pso_solver::initializeBestLocalFitness();
+    // initializeBestLocalFitness();
 	memset_loop<_pso_hw_real>(f_ind_local, (const _pso_hw_real)H_MAX, n_S);
 }
 // ---------------------------------------------------
 
-void pso_solver::rand_real(_pso_hw_real &rand_value){
+void rand_real(_pso_hw_real &rand_value){
 // #pragma HLS inline off
 	// static _pso_randCore_t rand_core;
 	_pso_hw_real rand_num_out;
@@ -417,7 +426,7 @@ void pso_solver::rand_real(_pso_hw_real &rand_value){
 
 // ---------------------------------------------------
 
-void  pso_solver::detectGlobalMinimum(
+void  detectGlobalMinimum(
 	_pso_hw_real *local_find,//[_pso_n_S], 
 	_pso_hw_real *local_bestfitness,
 	_pso_hw_real *local_global_min,
@@ -441,7 +450,7 @@ void  pso_solver::detectGlobalMinimum(
 
 // ---------------------------------------------------
 
-void pso_solver::initializeConstrains(
+void initializeConstrains(
 	volatile _pso_hw_real *u_curr,
 	_pso_hw_real *local_du_max,
 	_pso_hw_real *local_du_min,
@@ -454,19 +463,27 @@ void pso_solver::initializeConstrains(
 	// Initialize constrains based on current state
 #pragma HLS inline
 	initializeConstrains_loop: for (unsigned int i = 0; i < n_U; ++i){
+#pragma HLS pipeline
 		_pso_hw_real u_curr_tmp = u_curr[i];
 
         _pso_hw_real x_max_first_temp = u_curr_tmp + local_du_max[i]; //controled_system->acc_max[i];
 		_pso_hw_real x_min_first_temp = u_curr_tmp + local_du_min[i];//controled_system->acc_min[i];        
 
-		local_x_max_first[i] = (x_max_first_temp > local_u_max[i]) ? local_u_max[i]: x_max_first_temp;
-		local_x_min_first[i] = (x_min_first_temp < local_u_min[i])? local_u_min[i]: x_min_first_temp;	
+		if (x_max_first_temp > local_u_max[i])
+			local_x_max_first[i] = local_du_max[i];
+		else
+			local_x_max_first[i] = x_max_first_temp;
+
+		if (x_min_first_temp < local_du_min[i])
+			local_x_min_first[i] = local_u_min[i];
+		else
+			local_x_min_first[i] = x_min_first_temp;	
 	}
 }
 
 // ---------------------------------------------------
 
-void pso_solver::calculate_du_min(
+void calculate_du_min(
 	_pso_hw_real *_local_du_min,
 	_pso_hw_real *_local_du_max
 ){
@@ -480,7 +497,7 @@ void pso_solver::calculate_du_min(
 
 // ---------------------------------------------------
 
-void pso_solver::equalizeParticles(
+void equalizeParticles(
 	_pso_hw_real *local_x,
 	_pso_hw_real iteration
 ){
@@ -503,7 +520,7 @@ void pso_solver::equalizeParticles(
 
 // ---------------------------------------------------
 
-_pso_hw_real pso_solver::verifyControlConstrains(
+_pso_hw_real verifyControlConstrains(
 	_pso_hw_real *local_u_max,
 	_pso_hw_real *local_u_min,
 	_pso_hw_real value, 
@@ -521,7 +538,7 @@ _pso_hw_real pso_solver::verifyControlConstrains(
 // ---------------------------------------------------
 #ifdef PSO_CANON
 
-void pso_solver::detectInvalidParticles(
+void detectInvalidParticles(
 	int iter, 
 	int best_pos
 	
@@ -552,7 +569,7 @@ void pso_solver::detectInvalidParticles(
 
 // ---------------------------------------------------
 
-void pso_solver::initializeParticlesWithDuConstrains(
+void initializeParticlesWithDuConstrains(
 	_pso_hw_real *u_curr,
 
 	_pso_hw_real *local_du_max,
@@ -561,16 +578,20 @@ void pso_solver::initializeParticlesWithDuConstrains(
 	
 	_pso_hw_real *local_x,
 	_pso_hw_real *local_y,
-	_pso_hw_real *local_v,
+	_pso_hw_real *local_v
 	
-	bool *valid_particle
+	// ,bool *valid_particle
+
+#ifdef __SYNTHESIS__
+	,_rand_real_stream &__rand_port
+#endif
 ){
 // INITIALIZATION OF PARTICLES WITH Delta u CONTRAINS FOR MPC
-//#pragma HLS inline
-#pragma HLS ALLOCATION instances=rand_real limit=1 function
-#pragma HLS ALLOCATION instances=hmul limit=1 operation
-#pragma HLS ALLOCATION instances=hadd limit=1 operation
-#pragma HLS ALLOCATION instances=hsub limit=1 operation
+#pragma HLS inline
+// #pragma HLS ALLOCATION instances=rand_real limit=1 function
+// #pragma HLS ALLOCATION instances=hmul limit=1 operation
+// #pragma HLS ALLOCATION instances=hadd limit=1 operation
+// #pragma HLS ALLOCATION instances=hsub limit=1 operation
 
 	_pso_hw_real x_ant[_pso_n_U];
 	_pso_hw_real x_ant_tmp[_pso_n_U];
@@ -580,15 +601,19 @@ void pso_solver::initializeParticlesWithDuConstrains(
 		initializeS_du_loop_N:for (unsigned int j = 0; j < Nu; ++j) {
 			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant, (_pso_hw_real *)x_ant_tmp);
 			initializeS_du_loop_x:for (unsigned int k = 0; k < n_U; ++k) {
-// #pragma HLS pipeline II=11 rewind
+#pragma HLS pipeline rewind
 				int idx = j*n_U + k;
 				_pso_hw_real rand_tmp;
 				_pso_hw_real local_du_max_k = local_du_max[k];
-				pso_solver::rand_real(rand_tmp);
+#ifdef __SYNTHESIS__
+				rand_tmp = __rand_port.read();
+#else
+				rand_real(rand_tmp);
+#endif			
 				_pso_hw_real du_tmp = rand_tmp*(_pso_hw_real)2.0*local_du_max_k - local_du_max_k;
 		        _pso_hw_real x_tmp = x_ant[k] + du_tmp; //random->read(); 
 		        // _pso_hw_real x_tmp = ( x_ant[k] + (-du_max[k]) ) + ((_pso_hw_real)2.0*du_max[k]) * rand_tmp; //random->read(); 
-				x_tmp = pso_solver::verifyControlConstrains(
+				x_tmp = verifyControlConstrains(
 					local_u_max,
 					local_u_min,
 					x_tmp, 
@@ -597,7 +622,7 @@ void pso_solver::initializeParticlesWithDuConstrains(
                 local_x[i*part_S + idx] = x_tmp;
 				local_y[i*part_S + idx] = x_tmp; // uss_local[k];
 		        local_v[i*part_S + idx] = _pso_init_v;
-                valid_particle[i] = true;
+                // valid_particle[i] = true;
 				x_ant_tmp[k] = x_tmp;
 				idx++;
 		    }
@@ -609,7 +634,7 @@ void pso_solver::initializeParticlesWithDuConstrains(
 
 // ---------------------------------------------------
 
-void  pso_solver::initializeParticles(
+void  initializeParticles(
     // _pso_hw_real _x[][_pso_Nu*_pso_n_U], 
     // _pso_hw_real _y[][_pso_Nu*_pso_n_U], 
     // _pso_hw_real _v[][_pso_Nu*_pso_n_U]
@@ -643,7 +668,7 @@ void  pso_solver::initializeParticles(
 
 // ---------------------------------------------------
 
-void pso_solver::initializeLastBestKPSO(
+void initializeLastBestKPSO(
 	_pso_hw_real volatile *last_best,
 
 	_pso_hw_real *local_x_max_first,
@@ -656,6 +681,7 @@ void pso_solver::initializeLastBestKPSO(
 	// Uses KPSO (best last position)
 
 	for (unsigned int i = 0; i < n_U; i++){
+#pragma HLS pipeline
 		_pso_hw_real last_best_tmp = last_best[i];
 		_pso_hw_real x_i;
 		x_i = (last_best_tmp > local_x_max_first[i]) ? local_x_max_first[i] : last_best_tmp;
@@ -670,7 +696,7 @@ void pso_solver::initializeLastBestKPSO(
 
 // ---------------------------------------------------
 
-void pso_solver::initializeStableZero(
+void initializeStableZero(
 	_pso_hw_real *uss_local, 
 	_pso_hw_real *u_curr,
 
@@ -693,6 +719,7 @@ void pso_solver::initializeStableZero(
    	for (unsigned int k = 0; k < Nu; ++k){
 		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant, (_pso_hw_real*)x_ant_tmp);
         for (unsigned int i = 0; i < n_U; ++i) {
+#pragma HLS pipeline
         	idx = k*n_U + i;
 		    _pso_hw_real x_tmp = uss_local[i];
 			// _pso_hw_real comp_tmp = (k == 0) ? x_tmp - u_curr[i] : x_tmp - x_ant[i];
@@ -701,7 +728,7 @@ void pso_solver::initializeStableZero(
 			x_tmp = (comp_tmp > local_du_max[i]) ? local_du_max[i] : x_tmp;
 			x_tmp = (comp_tmp < local_du_min[i]) ? local_du_min[i] : x_tmp;
 
-            local_x[index*part_S + idx] = pso_solver::verifyControlConstrains(
+            local_x[index*part_S + idx] = verifyControlConstrains(
 				local_u_max,
 				local_u_min,
 				x_tmp, 
@@ -715,7 +742,7 @@ void pso_solver::initializeStableZero(
 
 // ---------------------------------------------------
 
-void pso_solver::evaluateFitnessAndDetectLocalBest(
+void evaluateFitnessAndDetectLocalBest(
 	_pso_hw_real *local_x,
 	_pso_hw_real *local_y,
 
@@ -769,7 +796,7 @@ void pso_solver::evaluateFitnessAndDetectLocalBest(
 // ---------------------------------------------------
 #ifdef PSO_CANON
 
-void pso_solver::updateParticles(
+void updateParticles(
 //	_pso_hw_real global_min[],
 
     // _pso_hw_real _x[][_pso_Nu*_pso_n_U],
@@ -810,10 +837,10 @@ void pso_solver::updateParticles(
 
 // ---------------------------------------------------
 
-void pso_solver::updateParticlesWithDuConstrains(
+void updateParticlesWithDuConstrains(
 	_pso_hw_real *local_u_curr,
 
-	_pso_hw_real local_w,
+	// _pso_hw_real local_w,
 
 	_pso_hw_real *local_x,
 	_pso_hw_real *local_y,
@@ -829,10 +856,12 @@ void pso_solver::updateParticlesWithDuConstrains(
 	_pso_hw_real *local_u_max,
 	_pso_hw_real *local_u_min
 ){
-
+	static _pso_hw_real w = _pso_w0;
+	
 	// Update particles
 	_pso_hw_real x_ant[_pso_n_U], x_ant_tmp[_pso_n_U];
     for (unsigned int i = 0; i < n_S; ++i) {
+	
 // #pragma UNROLL
 // #pragma HLS ALLOCATION operation instances=hmul 	  limit=1 
 // #pragma HLS ALLOCATION operation instances=hadd 	  limit=1 
@@ -847,13 +876,13 @@ void pso_solver::updateParticlesWithDuConstrains(
     	 		// int idx = k*Nu+j;
 				int idx = j*n_U+k;
                 _pso_hw_real r1,r2;
-				pso_solver::rand_real(r1); //random->read();
-                pso_solver::rand_real(r2); //random->read();
+				rand_real(r1); //random->read();
+                rand_real(r2); //random->read();
 
 	            _pso_hw_real v_tmp = local_v[i*part_S + idx];
 	            _pso_hw_real x_tmp = local_x[i*part_S + idx];
 	            // v = w*v + c1*r1*(y-x) + c2*r2*(global_min - x)
-				_pso_hw_real v_new = local_w*v_tmp + _pso_c1*r1*(local_y[i*part_S + idx]-x_tmp) + \
+				_pso_hw_real v_new = w*v_tmp + _pso_c1*r1*(local_y[i*part_S + idx]-x_tmp) + \
 										_pso_c2*r2*(local_global_min[idx] - x_tmp);
 	            v_new = (v_new > _pso_max_v) ? _pso_max_v : v_new;
 	            v_new = (v_new < _pso_min_v) ? _pso_min_v : v_new;
@@ -862,11 +891,24 @@ void pso_solver::updateParticlesWithDuConstrains(
 				_pso_hw_real x_new = x_tmp + v_new;
 				// _pso_hw_real x_dx_tmp = (j==0) ? x_new : x_new - x_ant_k; //x[i][idx]-x[i][idx-1];
 				_pso_hw_real x_dx_tmp = x_new - x_ant_k; //x[i][idx]-x[i][idx-1];
-				_pso_hw_real cmp_max = 	(j==0) ? local_x_max_first[k] : local_du_max[k];
-				_pso_hw_real cmp_min = 	(j==0) ? local_x_min_first[k] : local_du_min[k];
-				x_new = (x_dx_tmp > cmp_max) ? x_ant_k + cmp_max : x_new;
-				x_new = (x_dx_tmp < cmp_min) ? x_ant_k + cmp_min : x_new;
-                x_new = pso_solver::verifyControlConstrains(
+				_pso_hw_real cmp_max, cmp_min;
+				
+				if (j==0){
+					cmp_max = local_x_max_first[k];
+					cmp_min = local_x_min_first[k];
+				}else{
+					cmp_max = local_du_max[k];
+					cmp_min = local_du_min[k];
+				}
+
+				if (x_dx_tmp > cmp_max)
+					x_new = x_ant_k + cmp_max;
+				else if (x_dx_tmp < cmp_min)
+					x_new = x_ant_k + cmp_min;
+				else
+					x_new = x_new;
+
+                x_new = verifyControlConstrains(
 					local_u_max,
 					local_u_min,
 					x_new, 
@@ -882,5 +924,9 @@ void pso_solver::updateParticlesWithDuConstrains(
         } // END FOR j
        //} // END IF
     } // END FOR i
-
+	_pso_hw_real w_tmp = w + _pso_slope;
+	if (w_tmp <= _pso_wf)
+		w = _pso_w0;
+	else
+		w = w_tmp;
 }

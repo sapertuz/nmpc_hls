@@ -13,8 +13,8 @@
 #include "hls_math.h"
 #include "hls_stream.h"
 #include "ap_fixed.h"
-typedef half _rand_real;
-// typedef ap_fixed<48,5, AP_RND, AP_SAT> _rand_real;
+// typedef half _rand_real;
+typedef ap_fixed<32,17, AP_RND_INF,AP_SAT_SYM> _rand_real;
 typedef hls::stream< _rand_real> _rand_real_stream;
 #else
 typedef float _rand_real;
