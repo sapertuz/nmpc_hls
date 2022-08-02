@@ -460,24 +460,26 @@ void initializeConstrains(
 	_pso_hw_real *local_x_max_first,
 	_pso_hw_real *local_x_min_first
 ){
-	// Initialize constrains based on current state
+	// Initialize constrains based on current statecmp
 #pragma HLS inline
 	initializeConstrains_loop: for (unsigned int i = 0; i < n_U; ++i){
 #pragma HLS pipeline
 		_pso_hw_real u_curr_tmp = u_curr[i];
+		_pso_hw_real local_du_max_i = local_du_max[i];
+		_pso_hw_real local_du_min_i = local_du_min[i];
 
-        _pso_hw_real x_max_first_temp = u_curr_tmp + local_du_max[i]; //controled_system->acc_max[i];
+        _pso_hw_real x_max_first_temp = u_curr_tmp + local_du_max_i; //controled_system->acc_max[i];
 		_pso_hw_real x_min_first_temp = u_curr_tmp + local_du_min[i];//controled_system->acc_min[i];        
 
 		if (x_max_first_temp > local_u_max[i])
-			local_x_max_first[i] = local_du_max[i];
+			local_x_max_first[i] = ;
 		else
-			local_x_max_first[i] = x_max_first_temp;
+			local_x_max_first[i] = local_u_max[i];
 
-		if (x_min_first_temp < local_du_min[i])
-			local_x_min_first[i] = local_u_min[i];
+		if (x_min_first_temp < local_u_min[i])
+			local_x_min_first[i] = ;
 		else
-			local_x_min_first[i] = x_min_first_temp;	
+			local_x_min_first[i] = local_u_min[i];	
 	}
 }
 
