@@ -199,8 +199,8 @@ void evaluateFitnessAndDetectLocalBest(
 	_pso_hw_real *local_x_curr,//[_pso_Nx],
 
 	_pso_hw_real *local_xref,//[_pso_Nx*_pso_Nu], 
-	_pso_hw_real *local_f_ind,//[_pso_n_U],
-	_pso_hw_real *local_fx//[_pso_n_U],
+	_pso_hw_real *local_f_ind//[_pso_n_U],
+	// _pso_hw_real *local_fx//[_pso_n_U],
 );
 // ---------------------------------------------------
 #ifdef PSO_CANON

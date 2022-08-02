@@ -53,17 +53,17 @@ _pso_randCore_t rand_core;
 // ---------------------------------------------------
 
 int pso_solver::execute(
-	volatile _pso_hw_real *x_curr,//[_pso_Nx], 
-	volatile _pso_hw_real *u_curr,//[_pso_n_U], 
+	volatile _pso_hw_real x_curr[_pso_Nx], 
+	volatile _pso_hw_real u_curr[_pso_n_U], 
 	int iteration, 
-	volatile _pso_hw_real *last_best,//[_pso_n_U*_pso_Nu], 
-	volatile _pso_hw_real *xref,//[_pso_Nx*_pso_Nh],
+	volatile _pso_hw_real last_best[_pso_n_U*_pso_Nu], 
+	volatile _pso_hw_real xref[_pso_Nx*_pso_Nh],
 	// volatile _pso_hw_real uref[_pso_n_U], 
 	// volatile _pso_hw_real xss[_pso_Nx],
 	//volatile _pso_hw_real uss[_pso_n_U], 
 	
-	_pso_hw_real *new_best,//[_pso_Nu*_pso_n_U],
-	_pso_hw_real *J//[1]
+	_pso_hw_real new_best[_pso_Nu*_pso_n_U],
+	_pso_hw_real J[1]
 ){
 
 	_pso_hw_real w;
@@ -94,7 +94,6 @@ int pso_solver::execute(
 	int number_of_active_particles;
 
 	_pso_hw_real f_ind[_pso_n_S];
-	_pso_hw_real fx[_pso_n_S];
 	_pso_hw_real bestfitness[_pso_maxiter];
 	_pso_hw_real global_min[_pso_Nu*_pso_n_U];
 	_pso_hw_real _pso_x_min_first[_pso_n_U], _pso_x_max_first[_pso_n_U];
@@ -150,7 +149,6 @@ int pso_solver::execute(
 	// xss_local = (_pso_hw_real *) malloc(Nx*sizeof(_pso_hw_real));
 #endif
 
-
 	pso_solver::initializeParticles_set(
 		u_curr,
 		x_curr,
@@ -198,8 +196,8 @@ int pso_solver::execute(
 			x_curr_local, 
 
 			xref_local,
-			f_ind,
-			fx
+			f_ind
+			// ,fx
 		);
 
         // Global Minimum detection
@@ -298,6 +296,43 @@ void pso_solver::initializeParticles_set(
 	
 	bool *valid_particle
 ){
+#pragma HLS interface mode=ap_fifo port=u_curr
+#pragma HLS interface mode=ap_fifo port=x_curr
+#pragma HLS interface mode=ap_fifo port=xref
+#pragma HLS interface mode=ap_fifo port=last_best
+
+#pragma HLS interface mode=bram storage_type=ram_t2p name=x port=local_x
+#pragma HLS interface mode=bram storage_type=ram_t2p name=y port=local_y
+#pragma HLS interface mode=bram storage_type=ram_t2p name=v port=local_v
+#pragma HLS bind_storage type=ram_t2p impl=bram 			variable=local_x
+#pragma HLS bind_storage type=ram_t2p impl=bram 			variable=local_y
+#pragma HLS bind_storage type=ram_t2p impl=bram 			variable=local_v
+
+#pragma HLS interface mode=bram 				port=xref_local
+#pragma HLS interface mode=bram 				port=f_ind_local
+#pragma HLS interface mode=bram					port=w
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=xref_local
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=f_ind_local
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=w
+
+#pragma HLS interface mode=bram 				port=local_du_min
+#pragma HLS interface mode=bram 				port=local_du_max
+#pragma HLS interface mode=bram 				port=local_u_min
+#pragma HLS interface mode=bram 				port=local_u_max
+#pragma HLS interface mode=bram 				port=local_x_min_first
+#pragma HLS interface mode=bram 				port=local_x_max_first
+#pragma HLS interface mode=bram 				port=local_uss
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_du_min
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_du_max
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_u_min
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_u_max
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_x_min_first
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_x_max_first
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=local_uss
+
+
+#pragma HLS interface mode=bram 				port=valid_particle
+#pragma HLS bind_storage type=ram2p impl=bram 	variable=valid_particle
 
 	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(u_curr_local, 	(_pso_hw_real *)u_curr);
 	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(x_curr_local, 	(_pso_hw_real *)x_curr);
@@ -687,15 +722,14 @@ void pso_solver::evaluateFitnessAndDetectLocalBest(
 	_pso_hw_real *local_x_curr,//[_pso_Nx],
 
 	_pso_hw_real *local_xref,//[_pso_Nx*_pso_Nu], 
-	_pso_hw_real *local_f_ind,//[_pso_n_U],
-	_pso_hw_real *local_fx//[_pso_n_U],
+	_pso_hw_real *local_f_ind//[_pso_n_U],
+	// _pso_hw_real *local_fx//[_pso_n_U],
 ){
 
 // #pragma HLS interface ap_bus  port=_x
 // #pragma HLS interface ap_bus  port=xref
 // #pragma HLS interface ap_fifo port=uref
 // #pragma HLS interface ap_fifo port=xss
-
 	// Evaluates fitness and local detection
     loop_pso_evalfit: for(unsigned int i = 0; i < n_S; i++) {
         // std::cout << std::endl;
@@ -716,14 +750,15 @@ void pso_solver::evaluateFitnessAndDetectLocalBest(
 			// ,
 			// my_model
 		);
+		_pso_hw_real fx;
 // #pragma HLS unroll factor=5 skip_exit_check
         //if(valid_particle[i] == 1){
 		// current_system->nmpc_cost_function_topflow(x_curr_local, &x[i][0], xref, &fx[i]);
-		current_system.nmpc_cost_function_topflow(local_xref, &local_x[i*part_S], local_xref, &local_fx[i]);
+		current_system.nmpc_cost_function_topflow(local_x_curr, &local_x[i*part_S], local_xref, &fx);
 		// fx[i] = rand_real();
-		if (local_fx[i] < local_f_ind[i]) {
+		if (fx < local_f_ind[i]) {
 			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(&local_y[i*part_S], &local_x[i*part_S]);
-			local_f_ind[i] = local_fx[i];           
+			local_f_ind[i] = fx;
 		}
         //}
     }
