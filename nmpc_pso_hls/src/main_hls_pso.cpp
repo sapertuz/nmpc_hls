@@ -423,7 +423,13 @@ int main(int argc, char ** argv){
         for (int i = 0; i < _Nx; i++)
             curr_state[i] = next_state[i];
 
-
+        // ===============================================
+        // Save New Best
+        // ===============================================
+        for (int j = 0; j < _Nu*_n_U; ++j) {
+            last_best[j] = new_best[j];
+        }
+        
 		iter++;
         
         for (int i = 0; i < _n_U; ++i) {

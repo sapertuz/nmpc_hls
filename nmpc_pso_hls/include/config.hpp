@@ -83,6 +83,7 @@ const _hw_top_real rand_max = 1.0;
     const _hw_top_real _tr[] =  {0, 0, 0, 0};
     // float x_ss[] = {0.4, 0.3, 0.2, 0.1};
 #elif defined(SNIFFBOT_CONFIG)
+
     #define _Nh 25
     #define _Nu 25
     #define _Nx 12
@@ -104,24 +105,40 @@ const _hw_top_real rand_max = 1.0;
     const _hw_top_real  _pmax[] =  {1, 1, 1, 1};
     const _hw_top_real  _pmin[] =  {-1, -1, -1, -1};
 
+    const _hw_top_real drone_pi = 3.14159265359;
     const unsigned short _controlled_state[] = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
-    const _hw_top_real  _state_upper_limits[_Nx] =  {1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3};
-    const _hw_top_real  _state_lower_limits[_Nx] =  {-1e3, -1e3 -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3, -1e3};
+    const _hw_top_real  _state_upper_limits[_Nx] =  { 
+         1e3,  
+         1e3,  
+         1e3,  
+         drone_pi*(_hw_top_real).25,  
+         drone_pi*(_hw_top_real).25,  
+         1e3,  
+         1e3, 1e3, 1e3, 1e3, 1e3, 1e3
+    };
+    const _hw_top_real  _state_lower_limits[_Nx] =  {
+        -1e3, 
+        -1e3, 
+        -1e3, 
+        -drone_pi*(_hw_top_real).25, 
+        -drone_pi*(_hw_top_real).25, 
+        -1e3, 
+        -1e3, -1e3, -1e3, -1e3, -1e3, -1e3};
     const _hw_top_real  _Q[] =  {
         1, 
         1, 
         1, 
-        1, 
-        1, 
-        1, 
+        3, 
+        3, 
+        3, 
         0, 0, 0, 0, 0, 0};
     const _hw_top_real  _Qf[] =  {
         10, 
         10, 
         10, 
-        10, 
-        10, 
-        10, 
+        30, 
+        30, 
+        30, 
         0, 0, 0, 0, 0, 0};
     const _hw_top_real  _R[] =  {
         0.0005, 

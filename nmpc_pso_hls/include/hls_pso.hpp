@@ -89,8 +89,8 @@ void initializeParticles_set(
 	_pso_hw_real *local_du_max,
 	_pso_hw_real *local_u_min,
 	_pso_hw_real *local_u_max,
-	_pso_hw_real *local_x_min_first,
-	_pso_hw_real *local_x_max_first,
+	// _pso_hw_real *local_x_min_first,
+	// _pso_hw_real *local_x_max_first,
 	_pso_hw_real *local_uss
 	
 	// ,bool *valid_particle
@@ -106,16 +106,16 @@ void rand_real(_pso_hw_real &rand_value);
 
 // Init Functions
 // ---------------------------------------------------
-void initializeConstrains(
-	volatile _pso_hw_real *u_curr,
-	_pso_hw_real *local_du_max,
-	_pso_hw_real *local_du_min,
-	_pso_hw_real *local_u_max,
-	_pso_hw_real *local_u_min,
+// void initializeConstrains(
+// 	volatile _pso_hw_real *u_curr,
+// 	_pso_hw_real *local_du_max,
+// 	_pso_hw_real *local_du_min,
+// 	_pso_hw_real *local_u_max,
+// 	_pso_hw_real *local_u_min
 
-	_pso_hw_real *local_x_max_first,
-	_pso_hw_real *local_x_min_first
-);
+	// _pso_hw_real *local_x_max_first,
+	// _pso_hw_real *local_x_min_first
+// );
 // ---------------------------------------------------
 void calculate_du_min(
 	_pso_hw_real *_local_du_min,
@@ -128,10 +128,9 @@ void equalizeParticles(
 );
 // ---------------------------------------------------
 _pso_hw_real verifyControlConstrains(
-	_pso_hw_real *local_u_max,
-	_pso_hw_real *local_u_min,
-	_pso_hw_real value, 
-	int pos
+	_pso_hw_real local_u_max,
+	_pso_hw_real local_u_min,
+	_pso_hw_real value
 );
 #ifdef PSO_CANON
 // ---------------------------------------------------
@@ -175,15 +174,15 @@ void initializeParticles(
 );
 #endif
 // ---------------------------------------------------
-void initializeLastBestKPSO(
-	_pso_hw_real volatile *last_best,
+// void initializeLastBestKPSO(
+// 	_pso_hw_real volatile *last_best,
 
-	_pso_hw_real *local_x_max_first,
-	_pso_hw_real *local_x_min_first,
-	_pso_hw_real *local_x,
+// 	_pso_hw_real *local_x_max_first,
+// 	_pso_hw_real *local_x_min_first,
+// 	_pso_hw_real *local_x,
 
-	int index
-);
+// 	int index
+// );
 // ---------------------------------------------------
 void initializeStableZero(
 	_pso_hw_real *uss_local, 
@@ -235,8 +234,8 @@ void updateParticlesWithDuConstrains(
 
 	_pso_hw_real *local_global_min,
 
-	_pso_hw_real *local_x_max_first,
-	_pso_hw_real *local_x_min_first,
+	// _pso_hw_real *local_x_max_first,
+	// _pso_hw_real *local_x_min_first,
 
 	_pso_hw_real *local_du_max,
 	_pso_hw_real *local_du_min,
