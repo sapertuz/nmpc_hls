@@ -70,31 +70,26 @@ void initializeParticles_set(
 	volatile _pso_hw_real *xref,
 	volatile _pso_hw_real *last_best,
 
+	// Local memories for system constraints created now
+	_pso_hw_real u_curr_local[_pso_n_U],
+	_pso_hw_real x_curr_local[_pso_Nx],
+	_pso_hw_real xref_local[_pso_Nx*_pso_Nh],
+
 	// Particle Data Memory
-	_pso_hw_real *local_x,
-	_pso_hw_real *local_y,
-	_pso_hw_real *local_v,
+	_pso_hw_real local_x[_pso_n_S * _pso_Nu*_pso_n_U],
+	_pso_hw_real local_y[_pso_n_S * _pso_Nu*_pso_n_U],
+	_pso_hw_real local_v[_pso_n_S * _pso_Nu*_pso_n_U],
 
 	// Particle Variables
-	_pso_hw_real *xref_local,
-	_pso_hw_real *f_ind_local,
-	// _pso_hw_real &w,
+	_pso_hw_real f_ind_local[_pso_n_S],
 
 	// Local memories for system constraints created now
-	_pso_hw_real *u_curr_local,
-	_pso_hw_real *x_curr_local,
-
-	// Local memories for system constraints created now
-	_pso_hw_real *local_du_min,
-	_pso_hw_real *local_du_max,
-	_pso_hw_real *local_u_min,
-	_pso_hw_real *local_u_max,
-	// _pso_hw_real *local_x_min_first,
-	// _pso_hw_real *local_x_max_first,
-	_pso_hw_real *local_uss
+	_pso_hw_real local_du_min[_pso_n_U],
+	_pso_hw_real local_du_max[_pso_n_U],
+	_pso_hw_real local_u_min[_pso_n_U],
+	_pso_hw_real local_u_max[_pso_n_U],	
+	_pso_hw_real local_uss[_pso_n_U]
 	
-	// ,bool *valid_particle
-
 #ifdef __SYNTHESIS__
 	,_rand_real_stream &__rand_port
 #endif

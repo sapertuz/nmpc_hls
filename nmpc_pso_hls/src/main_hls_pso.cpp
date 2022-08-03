@@ -308,7 +308,7 @@ int main(int argc, char ** argv){
     // top_model_t my_sim_model;
     // top_model_t *my_sim_model_ptr = &my_sim_model;
 
-    typedef System<float, _Nh, _Nx, _n_U, _Nu> T_sim_system;
+    typedef System<float, float, _Nh, _Nx, _n_U, _Nu> T_sim_system;
     T_sim_system current_system(
         (float *)_u_max,
         (float *)_u_min, 

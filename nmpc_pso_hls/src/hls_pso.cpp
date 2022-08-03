@@ -159,23 +159,20 @@ int execute(
 		xref,
 		last_best,
 
-		x,y,v,
-
-		xref_local,
-		f_ind,
-		// w,
-
 		u_curr_local,
 		x_curr_local,
+		xref_local,
+
+		x,y,v,
+
+		f_ind,
 
 		_pso_du_min,
 		_pso_du_max,
 		(_pso_hw_real *)_pso_u_min,
 		(_pso_hw_real *)_pso_u_max,
-		// _pso_x_min_first,
-		// _pso_x_max_first,
 		(_pso_hw_real *)_pso_uss_local
-		// ,valid_particle
+
 #ifdef __SYNTHESIS__
 		, __rand_port
 #endif
@@ -280,28 +277,26 @@ void initializeParticles_set(
 	volatile _pso_hw_real *xref,
 	volatile _pso_hw_real *last_best,
 
+	// Local memories for system constraints created now
+	_pso_hw_real u_curr_local[_pso_n_U],
+	_pso_hw_real x_curr_local[_pso_Nx],
+	_pso_hw_real xref_local[_pso_Nx*_pso_Nh],
+
 	// Particle Data Memory
 	_pso_hw_real local_x[_pso_n_S * _pso_Nu*_pso_n_U],
 	_pso_hw_real local_y[_pso_n_S * _pso_Nu*_pso_n_U],
 	_pso_hw_real local_v[_pso_n_S * _pso_Nu*_pso_n_U],
 
 	// Particle Variables
-	_pso_hw_real xref_local[_pso_Nx*_pso_Nh],
 	_pso_hw_real f_ind_local[_pso_n_S],
-
-	// Local memories for system constraints created now
-	_pso_hw_real u_curr_local[_pso_n_U],
-	_pso_hw_real x_curr_local[_pso_Nx],
 
 	// Local memories for system constraints created now
 	_pso_hw_real local_du_min[_pso_n_U],
 	_pso_hw_real local_du_max[_pso_n_U],
 	_pso_hw_real local_u_min[_pso_n_U],
-	_pso_hw_real local_u_max[_pso_n_U],
-	
+	_pso_hw_real local_u_max[_pso_n_U],	
 	_pso_hw_real local_uss[_pso_n_U]
 	
-	// ,bool valid_particle[_pso_n_S]
 
 #ifdef __SYNTHESIS__
 	,_rand_real_stream &__rand_port
@@ -312,28 +307,29 @@ void initializeParticles_set(
 #pragma HLS interface mode=ap_fifo port=xref
 #pragma HLS interface mode=ap_fifo port=last_best
 
+#pragma HLS interface mode=bram storage_type=RAM_1WNR port=xref_local 
+#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=u_curr_local
+#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=x_curr_local
+
 #pragma HLS interface mode=bram storage_type=RAM_1WNR name=x port=local_x
 #pragma HLS interface mode=bram storage_type=RAM_1WNR name=y port=local_y
 #pragma HLS interface mode=bram storage_type=RAM_1WNR name=v port=local_v
 
-#pragma HLS interface mode=bram storage_type=RAM_1WNP	bundle=system_constraints	port=xref_local 
-#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=f_ind_local
-#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=u_curr_local
-#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=x_curr_local
-#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_du_min
-#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_du_max
-#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_u_min
-#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_u_max
-#pragma HLS interface mode=bram	storage_type=RAM_1WNP	bundle=system_constraints	port=local_uss
+#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=f_ind_local
 
+#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_du_min
+#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_du_max
+#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_u_min
+#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_u_max
+#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_uss
 
 #ifdef __SYNTHESIS__
 #pragma HLS interface mode=ap_fifo port=__rand_port
 #endif
 
-	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(u_curr_local, 	(_pso_hw_real *)u_curr);
-	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(x_curr_local, 	(_pso_hw_real *)x_curr);
-	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx*_pso_Nh>(xref_local, (_pso_hw_real *)xref);
+	memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_n_U>(u_curr_local, 	u_curr);
+	memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_Nx>(x_curr_local, 	x_curr);
+	memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_Nx*_pso_Nh>(xref_local, xref);
 
 	// w = _pso_w0;
 	calculate_du_min(
@@ -359,7 +355,7 @@ void initializeParticles_set(
 #endif		
 	);
 
-	memcpy_loop_rolled<_pso_hw_real,volatile _pso_hw_real,(Nu*n_U)>(&local_x[particle_last_best*part_S], last_best);
+	memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real,(Nu*n_U)>(&local_x[particle_last_best*part_S], last_best);
 
 	initializeStableZero(
 		local_uss,
@@ -575,7 +571,7 @@ void initializeParticlesWithDuConstrains(
 		initializeS_du_loop_N:for (unsigned int j = 0; j < Nu; ++j) {
 			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant, (_pso_hw_real *)x_ant_tmp);
 			initializeS_du_loop_x:for (unsigned int k = 0; k < n_U; ++k) {
-#pragma HLS pipeline rewind
+#pragma HLS pipeline
 				int idx = j*n_U + k;
 				_pso_hw_real rand_tmp;
 				_pso_hw_real local_du_max_k = local_du_max[k];
@@ -723,25 +719,30 @@ void initializeStableZero(
 // ---------------------------------------------------
 
 void evaluateFitnessAndDetectLocalBest(
-	_pso_hw_real *local_x,
-	_pso_hw_real *local_y,
+	_pso_hw_real local_x[_pso_n_S * _pso_Nu*_pso_n_U],
+	_pso_hw_real local_y[_pso_n_S * _pso_Nu*_pso_n_U],
 
-	_pso_hw_real *local_x_curr,//[_pso_Nx],
+	_pso_hw_real local_x_curr[_pso_Nx],
 
-	_pso_hw_real *local_xref,//[_pso_Nx*_pso_Nu], 
-	_pso_hw_real *local_f_ind//[_pso_n_U],
+	_pso_hw_real local_xref[_pso_Nx*_pso_Nu], 
+	_pso_hw_real local_f_ind[_pso_n_U]
 	// _pso_hw_real *local_fx//[_pso_n_U],
 ){
 
-// #pragma HLS interface ap_bus  port=_x
-// #pragma HLS interface ap_bus  port=xref
-// #pragma HLS interface ap_fifo port=uref
-// #pragma HLS interface ap_fifo port=xss
+#pragma HLS interface mode=bram storage_type=RAM_1WNR name=x port=local_x
+#pragma HLS interface mode=bram storage_type=RAM_1WNR name=y port=local_y
+#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_x_curr
+#pragma HLS interface mode=bram storage_type=RAM_1WNR port=local_xref 
+#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_f_ind
+
+#pragma HLS array_reshape variable=local_x type=block factor=n_S 
+#pragma HLS array_reshape variable=local_y type=block factor=n_S 
+
 	// Evaluates fitness and local detection
     loop_pso_evalfit: for(unsigned int i = 0; i < n_S; i++) {
         // std::cout << std::endl;
-// #pragma UNROLL
-		System<_pso_hw_real,_Nh, _Nx, _n_U, _Nu> 
+#pragma UNROLL
+		System<_pso_hw_real, _hw_model_real, _Nh, _Nx, _n_U, _Nu> 
 		current_system(
 			_u_max, 
 			_u_min, 

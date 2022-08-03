@@ -20,7 +20,7 @@
 
 template <
     class _system_hw_real,
-//    class _system_model_t,
+    class _system_hw_model_real,
     unsigned _system_Nh,
     unsigned _system_Nx,
     unsigned _system_n_U,
@@ -378,7 +378,19 @@ protected:
 // #pragma HLS interface mode=ap_fifo port=control     depth=_system_n_U*2
 // #pragma HLS pipeline off
         //model_inverted_pendulum<_system_hw_real, _system_Nx, _system_n_U>(state_dot, state, control);
-        __model(state_dot, state, control);
+        volatile _system_hw_model_real state_dot_model[_system_Nx];
+        volatile _system_hw_model_real state_model[_system_Nx];
+        volatile _system_hw_model_real control_model[_system_n_U];
+
+        memcpy_loop_rolled<_system_hw_model_real, _system_hw_real,_system_Nx>
+            ((_system_hw_model_real *)state_model, (_system_hw_real *)state);
+        memcpy_loop_rolled<_system_hw_model_real, _system_hw_real,_system_n_U>
+            ((_system_hw_model_real *)control_model, (_system_hw_real *)control);
+
+        __model<_system_hw_model_real>(state_dot_model, state_model, control_model);
+
+        memcpy_loop_rolled<_system_hw_real,_system_hw_model_real,_system_Nx>
+            ((_system_hw_real *)state_dot, (_system_hw_model_real *)state_dot_model);
     }
 
     void one_step_error(
@@ -511,13 +523,13 @@ void J_error(
         Ji_sum_loop: for (unsigned j = 0; j < _system_Nx; j++) {
 #pragma HLS pipeline off
             // J_local += Ji_mul[j];
-            Ji_acum += Ji[j];;
+            Ji_acum = Ji_acum + (_system_hw_real)Ji[j];;
         }
 
         Jui_sum_loop: for (unsigned j = 0; j < _system_n_U; j++) {
 #pragma HLS pipeline off
             // J_local += Jui_mul[j];
-            Jui_acum += Jui[j];
+            Jui_acum = Jui_acum + (_system_hw_real)Jui[j];
         }
         J[0] = Ji_acum + Jui_acum;
     }
@@ -537,7 +549,7 @@ void J_error(
         Jf_mul_loop: for (unsigned j = 0; j < _system_Nx; ++j) {
 #pragma HLS pipeline II=6
             _system_hw_real single_x_hat = final_x[j];
-            _system_hw_real tmp_err = (single_x_hat + (-final_xref[j]));
+            _system_hw_real tmp_err = (single_x_hat - (_system_hw_real)final_xref[j]);
             _system_hw_real penality;
             if ((state_lower_limits[j] <= single_x_hat) && (single_x_hat <= state_upper_limits[j])) 
                 penality = (_system_hw_real)1.0;
@@ -545,7 +557,7 @@ void J_error(
                 penality = (_system_hw_real)1e4;
             Jf = penality*tmp_err*tmp_err;
             _system_hw_real J_mul = Qf[j]*Jf;
-            J_local += J_mul;
+            J_local = J_local + J_mul;
         }
         J[0] = J_local;
     }

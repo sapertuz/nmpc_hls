@@ -106,7 +106,7 @@ void model_wrapper(
     reg_local_st: memcpy_loop_rolled<_model_real, float, _Nx>(local_state, (float *)state);
     reg_local_u_guess: memcpy_loop_rolled<_model_real, float, _n_U>(local_u_guess, (float *)u_guess);
 
-    __model(local_state_dot, local_state, local_u_guess);
+    __model<_model_real>(local_state_dot, local_state, local_u_guess);
 
     reg_st_dot: memcpy_loop_rolled<float, _model_real, _Nx>((float*)state_dot, local_state_dot);
     

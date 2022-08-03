@@ -5,18 +5,13 @@
 #include <iostream>
 #include <iomanip>
 
-// #ifdef __SYNTHESIS__
-// #include "hls_math.h"
-// typedef half _real;
-// #else
-// typedef float _real;
-// #endif
 #include "config.hpp"
 #include "aux_functions.hpp"
 
 #include "hls_system.hpp"
 
 typedef _hw_top_real _system_real;
+typedef _hw_model_real _system_model_real;
 
 
 #ifdef INVERTED_PENDULUM_CONFIG
@@ -178,7 +173,7 @@ float cost_function_wrapper(
 #pragma HLS INTERFACE m_axi depth=12  port=current_state offset=slave bundle=input
 
 
-    typedef System<_system_real, _Nh, _Nx, _n_U, _Nu> T_system;
+    typedef System<_system_real, _system_model_real, _Nh, _Nx, _n_U, _Nu> T_system;
     T_system current_system(
         _u_max, 
         _u_min, 
