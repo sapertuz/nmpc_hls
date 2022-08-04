@@ -5,7 +5,7 @@
 ############################################################
 set ip_path "/home/chello/Documents/Vivado_WS/vitis_ip_repo"
 
-set prj_name nmpc_solver_costF
+set prj_name test_costF
 set prj_top cost_function_wrapper
 
 set workspace [pwd]

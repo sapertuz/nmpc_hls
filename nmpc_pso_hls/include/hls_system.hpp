@@ -307,6 +307,11 @@ public:
 
 #pragma HLS ALLOCATION operation instances=hmul limit=1
 #pragma HLS ALLOCATION operation instances=hadd limit=1
+#pragma HLS ALLOCATION operation instances=hsub limit=1
+
+#pragma HLS ALLOCATION operation instances=mul limit=2
+#pragma HLS ALLOCATION operation instances=add limit=2
+#pragma HLS ALLOCATION operation instances=sub limit=1
 
 #pragma HLS ALLOCATION function instances=model limit=1
 
@@ -405,7 +410,7 @@ protected:
         _system_hw_real current_x_hat;
         _system_hw_real current_x_ref;
         for (unsigned j = 0; j < _system_Nx; ++j) {
-#pragma HLS PIPELINE II=11
+#pragma HLS PIPELINE //II=11
             current_x_hat = x_hat[j];
             current_x_ref = xref[j];
             _system_hw_real tmp_err;
@@ -421,6 +426,7 @@ protected:
                 Q_local = Qf[j];
             else 
                 Q_local = Q[j];
+                
             if ((state_lower_limits[j] <= current_x_hat) && (current_x_hat <= state_upper_limits[j]))
                 penality = (_system_hw_real)Q_local;
             else
@@ -451,7 +457,7 @@ protected:
 // #pragma HLS INLINE
         _system_hw_real penality;
         for (unsigned j = 0; j < _system_n_U; ++j) {
-#pragma HLS pipeline II=9
+#pragma HLS pipeline //II=9
             _system_hw_real current_uu = uu[j];
             _system_hw_real tmp_err = (current_uu - uss[j]);
             if ((u_min[j] <= current_uu) && (current_uu <= u_max[j]))
@@ -697,6 +703,7 @@ void J_error(
         ){        
 #pragma HLS inline
         for (unsigned i = 0; i < _system_Nx; ++i) {
+#pragma HLS pipeline
             state_plus[i] = state[i] + Ts_local*k[i];
         }
     }
@@ -711,6 +718,7 @@ void J_error(
         ){        
 #pragma HLS inline
         for (unsigned i = 0; i < _system_Nx; ++i) {
+#pragma HLS pipeline
             state_plus[i] = state[i] + Ts_6*(k1[i] + (_system_hw_real)2.0*k2[i] + (_system_hw_real)2.0*k3[i] + k4[i]);
         }
     }
