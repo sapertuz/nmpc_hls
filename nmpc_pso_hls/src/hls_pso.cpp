@@ -731,12 +731,13 @@ void evaluateFitnessAndDetectLocalBest(
 
 #pragma HLS interface mode=bram storage_type=RAM_1WNR name=x port=local_x
 #pragma HLS interface mode=bram storage_type=RAM_1WNR name=y port=local_y
+
 #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_x_curr
 #pragma HLS interface mode=bram storage_type=RAM_1WNR port=local_xref 
 #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_f_ind
 
-#pragma HLS array_reshape variable=local_x type=block factor=n_S 
-#pragma HLS array_reshape variable=local_y type=block factor=n_S 
+#pragma HLS array_partition variable=local_x type=block factor=n_S 
+#pragma HLS array_partition variable=local_y type=block factor=n_S 
 
 	// Evaluates fitness and local detection
     loop_pso_evalfit: for(unsigned int i = 0; i < n_S; i++) {
