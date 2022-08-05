@@ -38,7 +38,9 @@ const unsigned int Nh = _pso_Nh;
 const unsigned int Nx = _pso_Nx;
 const unsigned int n_U = _pso_n_U;
 const unsigned int Nu = _pso_Nu;
+const unsigned int size_xref = _pso_Nx*_pso_Nh;
 const unsigned int part_S = Nu*n_U;
+const unsigned int part_S_mem = _pso_n_S * _pso_Nu*_pso_n_U;
 // _pso_hw_real u_from_parameters[_N*_pso_n_U];
 
 // Pseudo Random Core Generator
@@ -272,10 +274,10 @@ int execute(
 
 void initializeParticles_set(
 	// Top Level inputs (FIFO Streams)
-	volatile _pso_hw_real *u_curr,
-	volatile _pso_hw_real *x_curr,
-	volatile _pso_hw_real *xref,
-	volatile _pso_hw_real *last_best,
+	volatile _pso_hw_real u_curr[_pso_n_U],
+	volatile _pso_hw_real x_curr[_pso_Nx],
+	volatile _pso_hw_real xref[_pso_Nx*_pso_Nh],
+	volatile _pso_hw_real last_best[_pso_Nu*_pso_n_U],
 
 	// Local memories for system constraints created now
 	_pso_hw_real u_curr_local[_pso_n_U],
@@ -302,29 +304,55 @@ void initializeParticles_set(
 	,_rand_real_stream &__rand_port
 #endif
 ){
-#pragma HLS interface mode=ap_fifo port=u_curr
-#pragma HLS interface mode=ap_fifo port=x_curr
-#pragma HLS interface mode=ap_fifo port=xref
-#pragma HLS interface mode=ap_fifo port=last_best
 
-#pragma HLS interface mode=bram storage_type=RAM_1WNR port=xref_local 
-#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=u_curr_local
-#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=x_curr_local
+// #pragma HLS interface mode=ap_fifo port=u_curr
+// #pragma HLS interface mode=ap_fifo port=x_curr
+// #pragma HLS interface mode=ap_fifo port=xref
+// #pragma HLS interface mode=ap_fifo port=last_best
 
-#pragma HLS interface mode=bram storage_type=RAM_1WNR name=x port=local_x
-#pragma HLS interface mode=bram storage_type=RAM_1WNR name=y port=local_y
-#pragma HLS interface mode=bram storage_type=RAM_1WNR name=v port=local_v
+// #pragma HLS interface mode=bram storage_type=RAM_1WNR port=xref_local 
+// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=u_curr_local
+// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=x_curr_local
 
-#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=f_ind_local
+// #pragma HLS interface mode=bram storage_type=RAM_1WNR name=x port=local_x
+// #pragma HLS interface mode=bram storage_type=RAM_1WNR name=y port=local_y
+// #pragma HLS interface mode=bram storage_type=RAM_1WNR name=v port=local_v
 
-#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_du_min
-#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_du_max
-#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_u_min
-#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_u_max
-#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_uss
+// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=f_ind_local
+
+// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_du_min
+// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_du_max
+// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_u_min
+// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_u_max
+// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_uss
+
+// #ifdef __SYNTHESIS__
+// #pragma HLS interface mode=ap_fifo port=__rand_port
+// #endif
+
+
+#pragma HLS INTERFACE mode=m_axi port=u_curr	offset=slave depth=n_U			bundle=nmpc_input
+#pragma HLS INTERFACE mode=m_axi port=x_curr	offset=slave depth=Nx			bundle=nmpc_input 
+#pragma HLS INTERFACE mode=m_axi port=xref		offset=slave depth=size_xref	bundle=nmpc_input
+#pragma HLS INTERFACE mode=m_axi port=last_best	offset=slave depth=part_S		bundle=nmpc_input
+
+#pragma HLS INTERFACE mode=m_axi port=local_x offset=off depth=part_S_mem bundle=x_mem
+#pragma HLS INTERFACE mode=m_axi port=local_y offset=off depth=part_S_mem bundle=y_mem
+#pragma HLS INTERFACE mode=m_axi port=local_v offset=off depth=part_S_mem bundle=v_mem
+
+#pragma HLS INTERFACE mode=m_axi port=u_curr_local	offset=direct	depth=n_U		bundle=current_mem 
+#pragma HLS INTERFACE mode=m_axi port=x_curr_local	offset=direct	depth=Nx		bundle=current_mem 
+#pragma HLS INTERFACE mode=m_axi port=xref_local	offset=direct	depth=size_xref	bundle=current_mem 
+
+#pragma HLS INTERFACE mode=m_axi port=f_ind_local 	offset=direct	depth=n_S bundle=constraints_mem
+#pragma HLS INTERFACE mode=m_axi port=local_du_min 	offset=direct	depth=n_U bundle=constraints_mem
+#pragma HLS INTERFACE mode=m_axi port=local_du_max 	offset=direct	depth=n_U bundle=constraints_mem
+#pragma HLS INTERFACE mode=m_axi port=local_u_min 	offset=direct	depth=n_U bundle=constraints_mem
+#pragma HLS INTERFACE mode=m_axi port=local_u_max 	offset=direct	depth=n_U bundle=constraints_mem
+#pragma HLS INTERFACE mode=m_axi port=local_uss 	offset=direct	depth=n_U bundle=constraints_mem
 
 #ifdef __SYNTHESIS__
-#pragma HLS interface mode=ap_fifo port=__rand_port
+#pragma HLS interface mode=axis port=__rand_port 
 #endif
 
 	memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_n_U>(u_curr_local, 	u_curr);
@@ -736,13 +764,15 @@ void evaluateFitnessAndDetectLocalBest(
 #pragma HLS interface mode=bram storage_type=RAM_1WNR port=local_xref 
 #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_f_ind
 
-#pragma HLS array_partition variable=local_x type=block factor=n_S 
-#pragma HLS array_partition variable=local_y type=block factor=n_S 
+// #pragma HLS array_partition variable=local_x 		type=block factor=n_S 
+// #pragma HLS array_partition variable=local_y 		type=block factor=n_S 
+
+
+	_pso_hw_real fx[_pso_n_S];
+#pragma HLS array_partition variable=fx	type=complete factor=n_S 
 
 	// Evaluates fitness and local detection
     loop_pso_evalfit: for(unsigned int i = 0; i < n_S; i++) {
-        // std::cout << std::endl;
-#pragma UNROLL
 		System<_pso_hw_real, _hw_model_real, _Nh, _Nx, _n_U, _Nu> 
 		current_system(
 			_u_max, 
@@ -759,20 +789,16 @@ void evaluateFitnessAndDetectLocalBest(
 			// ,
 			// my_model
 		);
-		_pso_hw_real fx;
-// #pragma HLS unroll factor=5 skip_exit_check
-        //if(valid_particle[i] == 1){
-		// current_system->nmpc_cost_function_topflow(x_curr_local, &x[i][0], xref, &fx[i]);
-		current_system.nmpc_cost_function_topflow(local_x_curr, &local_x[i*part_S], local_xref, &fx);
-		// fx[i] = rand_real();
-		if (fx < local_f_ind[i]) {
+		current_system.nmpc_cost_function_topflow(local_x_curr, &local_x[i*part_S], local_xref, &fx[i]);
+	}
+	
+	for (int i = 0; i < n_S; i++){	
+#pragma UNROLL off
+		if (fx[i] < local_f_ind[i]) {
 			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(&local_y[i*part_S], &local_x[i*part_S]);
-			local_f_ind[i] = fx;
+			local_f_ind[i] = fx[i] ;
 		}
-        //}
     }
-    // std::cout << std::endl;
-
 }
 
 // ---------------------------------------------------

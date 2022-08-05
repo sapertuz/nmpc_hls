@@ -37,7 +37,7 @@ void rand_wrapper(
     _rand_real_stream &rand_out
 )
 {
-// #pragma HLS INTERFACE mode=axis 	port=rand_out
+#pragma HLS INTERFACE mode=axis 	port=rand_out
 // #pragma HLS interface mode=ap_none  port=enable
 // #pragma HLS interface mode=axis     port=rand_out
 // #pragma HLS interface mode=ap_ctrl_none port=return
@@ -45,16 +45,15 @@ void rand_wrapper(
 #pragma HLS stream variable=rand_out type=fifo depth=16
 
 #if  (defined(__SYNTHESIS__) || (defined(__VITIS__)))
+    static bool eol = true;
     _rand_real rand_num_out;
 //    for (int i = 0; i < 1024; i++)
-    while(1)
-    {
+    do{
 #pragma HLS pipeline II=1
-//	if (!rand_out.full()){
-		_hw_rand_core.rand_num(rand_num_out);
-		rand_out.write(rand_num_out);
-//	}
-	}
+        _hw_rand_core.rand_num(rand_num_out);
+        rand_out.write(rand_num_out);
+        // eol = rand_out.tready();
+	}while(eol);
 #else
     _rand_real rand_num_out;
     _hw_rand_core.rand_num(rand_num_out);
