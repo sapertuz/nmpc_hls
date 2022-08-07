@@ -15,7 +15,7 @@ const int particle_last_best = 0;
 const int particle_stable_zero = 1;
 
 // PSO Parameters
-// const unsigned int	_pso_maxiter = _pso_maxiter;
+const unsigned int	pso_maxiter = _pso_maxiter;
 const _pso_hw_real 	_pso_max_v = _max_v;
 const _pso_hw_real 	_pso_min_v = -_max_v;
 const _pso_hw_real 	_pso_w0 = _w0; // initial weight
@@ -54,11 +54,11 @@ _pso_randCore_t rand_core;
 // ---------------------------------------------------
 
 int execute(
-	volatile _pso_hw_real x_curr[_pso_Nx], 
-	volatile _pso_hw_real u_curr[_pso_n_U], 
+	_pso_hw_real x_curr[_pso_Nx], 
+	_pso_hw_real u_curr[_pso_n_U], 
 	int iteration, 
-	volatile _pso_hw_real last_best[_pso_n_U*_pso_Nu], 
-	volatile _pso_hw_real xref[_pso_Nx*_pso_Nh],
+	_pso_hw_real last_best[_pso_n_U*_pso_Nu], 
+	_pso_hw_real xref[_pso_Nx*_pso_Nh],
 	// volatile _pso_hw_real uref[_pso_n_U], 
 	// volatile _pso_hw_real xss[_pso_Nx],
 	//volatile _pso_hw_real uss[_pso_n_U], 
@@ -153,14 +153,19 @@ int execute(
 		// _pso_hw_real rand_value;
 		// rand_real(rand_value);
 		// __rand_port.write(rand_value)
+		memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_n_U>(u_curr_local, 	u_curr);
+		memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_Nx>(x_curr_local, 	x_curr);
+		memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_Nx*_pso_Nh>(xref_local, xref);
 	#endif
 
 	initializeParticles_set(
+#ifndef __SYNTHESIS__
 		u_curr,
 		x_curr,
 		xref,
+#endif
 		last_best,
-
+		
 		u_curr_local,
 		x_curr_local,
 		xref_local,
@@ -234,6 +239,9 @@ int execute(
 			_pso_du_min,
 			(_pso_hw_real *)_pso_u_max,
 			(_pso_hw_real *)_pso_u_min
+#ifdef __SYNTHESIS__
+			, __rand_port
+#endif
 		);    
 #ifdef DEBUG_PSO
 		std::cout << "[" << k << "] ";
@@ -272,12 +280,248 @@ int execute(
 	return k;
 }
 
+// ---------------------------------------------------
+
+int pso_fsm(
+	// Top Level 
+	_pso_hw_real u_curr[_pso_n_U],
+	_pso_hw_real x_curr[_pso_Nx],
+	_pso_hw_real xref[_pso_Nx*_pso_Nh],
+	_pso_hw_real last_best[_pso_Nu*_pso_n_U],
+
+	_pso_hw_real new_best[_pso_Nu*_pso_n_U],
+	_pso_hw_real bestfitness_top[_pso_maxiter],
+
+	// Local memories for system constraints created now
+	_pso_hw_real last_best_local[_pso_Nu*_pso_n_U],
+	_pso_hw_real u_curr_local[_pso_n_U],
+	_pso_hw_real x_curr_local[_pso_Nx],
+	_pso_hw_real xref_local[_pso_Nx*_pso_Nh],
+
+	// State Machine signals
+	bool &rand_core_ap_start,
+	bool &init_s_ap_start,
+	bool init_s_ap_idle,
+	bool &eval_s_ap_start,
+	bool eval_s_ap_idle,
+	bool &detect_min_ap_start,
+	bool detect_min_ap_idle,
+	bool &update_s_ap_start,
+	bool update_s_ap_idle,
+
+	bool &rst_cores,
+
+	// Particle Variables
+	uint32_t &k,
+	_pso_hw_real local_bestfitness[_pso_maxiter],
+	_pso_hw_real global_min[_pso_Nu*_pso_n_U]
+	
+){
+#pragma HLS INTERFACE mode=s_axilite port=return bundle=control
+
+#pragma HLS INTERFACE mode=ap_none port=rand_core_ap_start
+#pragma HLS INTERFACE mode=ap_none port=init_s_ap_start
+#pragma HLS INTERFACE mode=ap_none port=init_s_ap_idle
+#pragma HLS INTERFACE mode=ap_none port=eval_s_ap_start
+#pragma HLS INTERFACE mode=ap_none port=eval_s_ap_idle
+#pragma HLS INTERFACE mode=ap_none port=detect_min_ap_start
+#pragma HLS INTERFACE mode=ap_none port=detect_min_ap_idle
+#pragma HLS INTERFACE mode=ap_none port=update_s_ap_start
+#pragma HLS INTERFACE mode=ap_none port=update_s_ap_idle
+#pragma HLS INTERFACE mode=ap_none port=rst_cores
+
+#pragma HLS interface mode=ap_vld register port=k
+
+#pragma HLS INTERFACE mode=m_axi port=u_curr			offset=slave 	depth=n_U			bundle=nmpc_io
+#pragma HLS INTERFACE mode=m_axi port=x_curr			offset=slave 	depth=Nx			bundle=nmpc_io 
+#pragma HLS INTERFACE mode=m_axi port=xref				offset=slave 	depth=size_xref		bundle=nmpc_io
+#pragma HLS INTERFACE mode=m_axi port=last_best			offset=slave 	depth=part_S		bundle=nmpc_io
+
+#pragma HLS INTERFACE mode=m_axi port=new_best			offset=slave 	depth=part_S		bundle=nmpc_io
+#pragma HLS INTERFACE mode=m_axi port=bestfitness_top	offset=slave 	depth=pso_maxiter	bundle=nmpc_io
+
+#pragma HLS INTERFACE mode=m_axi port=u_curr_local		offset=direct	depth=n_U			bundle=current_mem 
+#pragma HLS INTERFACE mode=m_axi port=x_curr_local		offset=direct	depth=Nx			bundle=current_mem 
+#pragma HLS INTERFACE mode=m_axi port=xref_local		offset=direct	depth=size_xref		bundle=current_mem 
+#pragma HLS INTERFACE mode=m_axi port=last_best_local	offset=direct	depth=part_S		bundle=current_mem 
+
+#pragma HLS INTERFACE mode=m_axi port=local_bestfitness	offset=direct 	depth=pso_maxiter	bundle=pso_mem
+#pragma HLS INTERFACE mode=m_axi port=global_min		offset=direct 	depth=part_S		bundle=pso_mem
+
+	uint32_t k_local = 0;
+	k = 0;
+	uint16_t state = 0;
+	
+	rst_cores			= false;
+	rand_core_ap_start	= false;
+	init_s_ap_start		= false;
+	eval_s_ap_start 	= false;
+	detect_min_ap_start = false;
+	update_s_ap_start 	= false;
+
+	bool flag=true;
+	do{
+		switch (state)
+		{
+		case 0: // Save Input data in memory banks
+			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(u_curr_local, 	u_curr);
+			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx>(x_curr_local, 	x_curr);
+			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nx*_pso_Nh>(xref_local, xref);
+			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(last_best_local, last_best);
+
+			rst_cores			= true;
+			rand_core_ap_start	= false;
+			init_s_ap_start		= false;
+			eval_s_ap_start 	= false;
+			detect_min_ap_start = false;
+			update_s_ap_start 	= false;
+						
+			state = 1;
+			break;
+
+		case 1:
+			rst_cores			= false;
+			rand_core_ap_start	= true;
+			init_s_ap_start		= true;
+			eval_s_ap_start 	= false;
+			detect_min_ap_start = false;
+			update_s_ap_start 	= false;
+
+			state = 2;
+			break;
+
+		case 2: // Init State
+			rst_cores			= false;
+			rand_core_ap_start	= true;
+			init_s_ap_start		= false;
+			eval_s_ap_start 	= false;
+			detect_min_ap_start = false;
+			update_s_ap_start 	= false;
+			
+			if (init_s_ap_idle)
+				state = 2;
+			else
+				state = 3;
+
+			break;
+
+		case 3: // Interactive Start
+			rst_cores			= false;
+			rand_core_ap_start	= false;
+			init_s_ap_start		= false;
+			eval_s_ap_start 	= true;
+			detect_min_ap_start = false;
+			update_s_ap_start 	= false;
+			
+			state = 4;
+			break;
+
+		case 4: // Cost F
+			rst_cores			= false;
+			rand_core_ap_start	= false;
+			init_s_ap_start		= false;
+			eval_s_ap_start 	= false;
+			detect_min_ap_start = false;
+			update_s_ap_start 	= false;
+			
+			if (eval_s_ap_idle)
+				state = 4;
+			else
+				state = 5;
+			break;
+
+		case 5:// Detect Min
+			rst_cores			= false;
+			rand_core_ap_start	= false;
+			init_s_ap_start		= false;
+			eval_s_ap_start 	= false;
+			detect_min_ap_start = true;
+			update_s_ap_start 	= false;
+			
+			state = 6;
+			break;
+
+		case 6:// 
+			rst_cores			= false;
+			rand_core_ap_start	= false;
+			init_s_ap_start		= false;
+			eval_s_ap_start 	= false;
+			detect_min_ap_start = false;
+			update_s_ap_start 	= false;
+			
+			if (detect_min_ap_idle)
+				state = 6;
+			else
+				state = 7;
+			break;
+
+		case 7://  Update S
+			rst_cores			= false;
+			rand_core_ap_start	= true;
+			init_s_ap_start		= false;
+			eval_s_ap_start 	= false;
+			detect_min_ap_start = false;
+			update_s_ap_start 	= true;
+			
+			state = 8;
+			break;
+		
+		case 8:// 
+			rst_cores			= false;
+			rand_core_ap_start	= true;
+			init_s_ap_start		= false;
+			eval_s_ap_start 	= false;
+			detect_min_ap_start = false;
+			update_s_ap_start 	= false;
+			
+			if (update_s_ap_idle)
+				state = 8;
+			else
+				k_local++;
+				k = k_local;
+				if (k_local == _pso_maxiter)
+					state = 9;
+				else
+					state = 3;
+			break;
+
+		case 9:// Finish and save data
+			rst_cores			= false;
+			rand_core_ap_start	= false;
+			init_s_ap_start		= false;
+			eval_s_ap_start 	= false;
+			detect_min_ap_start = false;
+			update_s_ap_start 	= false;
+			
+			state = 10;
+			memcpy_loop_rolled<_pso_hw_real,_pso_hw_real,_pso_Nu*_pso_n_U>(new_best, global_min);
+			memcpy_loop_rolled<_pso_hw_real,_pso_hw_real,_pso_maxiter>(bestfitness_top,local_bestfitness);
+			flag = false;
+
+			break;
+		
+		case 10:// Finish and save data
+			flag = false;
+			state = 10;
+			break;
+
+		default:
+			state = 1;
+			break;
+		}
+	}while(flag);
+
+	return k_local;
+}
+
 void initializeParticles_set(
 	// Top Level inputs (FIFO Streams)
-	volatile _pso_hw_real u_curr[_pso_n_U],
-	volatile _pso_hw_real x_curr[_pso_Nx],
-	volatile _pso_hw_real xref[_pso_Nx*_pso_Nh],
-	volatile _pso_hw_real last_best[_pso_Nu*_pso_n_U],
+#ifndef __SYNTHESIS__
+	_pso_hw_real u_curr[_pso_n_U],
+	_pso_hw_real x_curr[_pso_Nx],
+	_pso_hw_real xref[_pso_Nx*_pso_Nh],
+#endif
+	_pso_hw_real last_best[_pso_Nu*_pso_n_U],
 
 	// Local memories for system constraints created now
 	_pso_hw_real u_curr_local[_pso_n_U],
@@ -331,10 +575,10 @@ void initializeParticles_set(
 // #endif
 
 
-#pragma HLS INTERFACE mode=m_axi port=u_curr	offset=slave depth=n_U			bundle=nmpc_input
-#pragma HLS INTERFACE mode=m_axi port=x_curr	offset=slave depth=Nx			bundle=nmpc_input 
-#pragma HLS INTERFACE mode=m_axi port=xref		offset=slave depth=size_xref	bundle=nmpc_input
-#pragma HLS INTERFACE mode=m_axi port=last_best	offset=slave depth=part_S		bundle=nmpc_input
+// #pragma HLS INTERFACE mode=m_axi port=u_curr	offset=slave depth=n_U			bundle=nmpc_input
+// #pragma HLS INTERFACE mode=m_axi port=x_curr	offset=slave depth=Nx			bundle=nmpc_input 
+// #pragma HLS INTERFACE mode=m_axi port=xref		offset=slave depth=size_xref	bundle=nmpc_input
+// #pragma HLS INTERFACE mode=m_axi port=last_best	offset=slave depth=part_S		bundle=nmpc_input
 
 #pragma HLS INTERFACE mode=m_axi port=local_x offset=off depth=part_S_mem bundle=x_mem
 #pragma HLS INTERFACE mode=m_axi port=local_y offset=off depth=part_S_mem bundle=y_mem
@@ -343,8 +587,10 @@ void initializeParticles_set(
 #pragma HLS INTERFACE mode=m_axi port=u_curr_local	offset=direct	depth=n_U		bundle=current_mem 
 #pragma HLS INTERFACE mode=m_axi port=x_curr_local	offset=direct	depth=Nx		bundle=current_mem 
 #pragma HLS INTERFACE mode=m_axi port=xref_local	offset=direct	depth=size_xref	bundle=current_mem 
+#pragma HLS INTERFACE mode=m_axi port=last_best 	offset=direct	depth=part_S 	bundle=current_mem 
 
-#pragma HLS INTERFACE mode=m_axi port=f_ind_local 	offset=direct	depth=n_S bundle=constraints_mem
+#pragma HLS INTERFACE mode=m_axi port=f_ind_local 	offset=direct	depth=n_S bundle=pso_mem
+
 #pragma HLS INTERFACE mode=m_axi port=local_du_min 	offset=direct	depth=n_U bundle=constraints_mem
 #pragma HLS INTERFACE mode=m_axi port=local_du_max 	offset=direct	depth=n_U bundle=constraints_mem
 #pragma HLS INTERFACE mode=m_axi port=local_u_min 	offset=direct	depth=n_U bundle=constraints_mem
@@ -355,9 +601,11 @@ void initializeParticles_set(
 #pragma HLS interface mode=axis port=__rand_port 
 #endif
 
+#ifndef __SYNTHESIS__
 	memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_n_U>(u_curr_local, 	u_curr);
 	memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_Nx>(x_curr_local, 	x_curr);
 	memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_Nx*_pso_Nh>(xref_local, xref);
+#endif
 
 	// w = _pso_w0;
 	calculate_du_min(
@@ -383,7 +631,7 @@ void initializeParticles_set(
 #endif		
 	);
 
-	memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real,(Nu*n_U)>(&local_x[particle_last_best*part_S], last_best);
+	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real,(Nu*n_U)>(&local_x[particle_last_best*part_S], last_best);
 
 	initializeStableZero(
 		local_uss,
@@ -420,13 +668,22 @@ void rand_real(_pso_hw_real &rand_value){
 // ---------------------------------------------------
 
 void  detectGlobalMinimum(
-	_pso_hw_real *local_find,//[_pso_n_S], 
-	_pso_hw_real *local_bestfitness,
-	_pso_hw_real *local_global_min,
+	_pso_hw_real local_find[_pso_n_S], 
+	_pso_hw_real local_bestfitness[_pso_maxiter],
+	_pso_hw_real local_global_min[_pso_Nu*_pso_n_U],
 	int interaction,
 	
-	_pso_hw_real *local_y
+	_pso_hw_real local_y[_pso_n_S * _pso_Nu*_pso_n_U]
 ){
+#pragma HLS INTERFACE mode=m_axi port=local_bestfitness	offset=direct bundle=current_mem depth=pso_maxiter
+#pragma HLS INTERFACE mode=m_axi port=local_global_min	offset=direct bundle=current_mem depth=n_U
+
+#pragma HLS INTERFACE mode=m_axi port=local_find 	offset=direct	depth=n_S bundle=constraints_mem
+
+#pragma HLS INTERFACE mode=m_axi port=local_y offset=off depth=part_S_mem bundle=y_mem
+
+#pragma HLS interface mode=ap_vld register port=interaction
+
 	//[bestfitness(k), p] = min(f_ind);
 #pragma HLS inline
 	_pso_hw_real min = local_find[0];
@@ -757,12 +1014,20 @@ void evaluateFitnessAndDetectLocalBest(
 	// _pso_hw_real *local_fx//[_pso_n_U],
 ){
 
-#pragma HLS interface mode=bram storage_type=RAM_1WNR name=x port=local_x
-#pragma HLS interface mode=bram storage_type=RAM_1WNR name=y port=local_y
+// #pragma HLS interface mode=bram storage_type=RAM_1WNR name=x port=local_x
+// #pragma HLS interface mode=bram storage_type=RAM_1WNR name=y port=local_y
 
-#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_x_curr
-#pragma HLS interface mode=bram storage_type=RAM_1WNR port=local_xref 
-#pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_f_ind
+// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_x_curr
+// #pragma HLS interface mode=bram storage_type=RAM_1WNR port=local_xref 
+// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_f_ind
+
+#pragma HLS INTERFACE mode=m_axi port=local_x offset=off depth=part_S_mem bundle=x_mem
+#pragma HLS INTERFACE mode=m_axi port=local_y offset=off depth=part_S_mem bundle=y_mem
+
+#pragma HLS INTERFACE mode=m_axi port=local_x_curr	offset=direct	depth=Nx		bundle=current_mem 
+#pragma HLS INTERFACE mode=m_axi port=local_xref	offset=direct	depth=size_xref	bundle=current_mem 
+#pragma HLS INTERFACE mode=m_axi port=local_f_ind 	offset=direct	depth=n_S bundle=constraints_mem
+
 
 // #pragma HLS array_partition variable=local_x 		type=block factor=n_S 
 // #pragma HLS array_partition variable=local_y 		type=block factor=n_S 
@@ -846,31 +1111,64 @@ void updateParticles(
 // ---------------------------------------------------
 
 void updateParticlesWithDuConstrains(
-	_pso_hw_real *local_u_curr,
+	_pso_hw_real local_u_curr[_pso_n_U],
 
 	// _pso_hw_real local_w,
 
-	_pso_hw_real *local_x,
-	_pso_hw_real *local_y,
-	_pso_hw_real *local_v,
+	_pso_hw_real local_x[_pso_n_S * _pso_Nu*_pso_n_U],
+	_pso_hw_real local_y[_pso_n_S * _pso_Nu*_pso_n_U],
+	_pso_hw_real local_v[_pso_n_S * _pso_Nu*_pso_n_U],
 
-	_pso_hw_real *local_global_min,
+	_pso_hw_real local_global_min[_pso_Nu*_pso_n_U],
 
 	// _pso_hw_real *local_x_max_first,
 	// _pso_hw_real *local_x_min_first,
 
-	_pso_hw_real *local_du_max,
-	_pso_hw_real *local_du_min,
-	_pso_hw_real *local_u_max,
-	_pso_hw_real *local_u_min
+	_pso_hw_real local_du_max[_pso_n_U],
+	_pso_hw_real local_du_min[_pso_n_U],
+	_pso_hw_real local_u_max[_pso_n_U],
+	_pso_hw_real local_u_min[_pso_n_U]
+
+#ifdef __SYNTHESIS__
+	,_rand_real_stream &__rand_port
+#endif
 ){
+#pragma HLS INTERFACE mode=m_axi port=local_x offset=off depth=part_S_mem bundle=x_mem
+#pragma HLS INTERFACE mode=m_axi port=local_y offset=off depth=part_S_mem bundle=y_mem
+#pragma HLS INTERFACE mode=m_axi port=local_v offset=off depth=part_S_mem bundle=v_mem
+
+#pragma HLS INTERFACE mode=m_axi port=local_u_curr		offset=direct	depth=n_U		bundle=current_mem 
+#pragma HLS INTERFACE mode=m_axi port=local_global_min	offset=direct	depth=n_U		bundle=current_mem
+
+#pragma HLS INTERFACE mode=m_axi port=local_du_min 		offset=direct	depth=n_U bundle=constraints_mem
+#pragma HLS INTERFACE mode=m_axi port=local_du_max 		offset=direct	depth=n_U bundle=constraints_mem
+#pragma HLS INTERFACE mode=m_axi port=local_u_min 		offset=direct	depth=n_U bundle=constraints_mem
+#pragma HLS INTERFACE mode=m_axi port=local_u_max 		offset=direct	depth=n_U bundle=constraints_mem
+
+#ifdef __SYNTHESIS__
+#pragma HLS interface mode=axis port=__rand_port 
+#endif
 	static _pso_hw_real w = _pso_w0;
 	
+	_pso_hw_real __local_global_min[_pso_Nu*_pso_n_U];
+	_pso_hw_real __local_du_max[_pso_n_U];
+	_pso_hw_real __local_du_min[_pso_n_U];
+	_pso_hw_real __local_u_max[_pso_n_U];
+	_pso_hw_real __local_u_min[_pso_n_U];
+
+	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(__local_global_min, local_global_min);
+	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(__local_du_max, local_du_max);
+	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(__local_du_min, local_du_min);
+	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(__local_u_max, local_u_max);
+	memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(__local_u_min, local_u_min);
+
 	// Update particles
 	_pso_hw_real x_ant[_pso_n_U], x_ant_tmp[_pso_n_U];
-    for (unsigned int i = 0; i < n_S; ++i) {
-	
+    for (unsigned int i = 0; i < n_S; ++i) {	
 // #pragma UNROLL
+// #pragma HLS ALLOCATION operation instances=mul 	  limit=1 
+// #pragma HLS ALLOCATION operation instances=add 	  limit=1 
+// #pragma HLS ALLOCATION operation instances=sub 	  limit=1 
 // #pragma HLS ALLOCATION operation instances=hmul 	  limit=1 
 // #pragma HLS ALLOCATION operation instances=hadd 	  limit=1 
 // #pragma HLS ALLOCATION operation instances=hsub 	  limit=1 
@@ -880,18 +1178,22 @@ void updateParticlesWithDuConstrains(
     	 for (unsigned int j = 0; j < Nu; ++j) {
 			memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant, (_pso_hw_real*)x_ant_tmp);
     	 	for (unsigned int k = 0; k < n_U; ++k){
-// #pragma HLS pipeline II=11 rewind
+#pragma HLS pipeline II=3 rewind
     	 		// int idx = k*Nu+j;
 				int idx = j*n_U+k;
                 _pso_hw_real r1,r2;
+#ifdef __SYNTHESIS__
+				r1 = __rand_port.read();
+				r2 = __rand_port.read();
+#else
 				rand_real(r1); //random->read();
                 rand_real(r2); //random->read();
-
+#endif		
 	            _pso_hw_real v_tmp = local_v[i*part_S + idx];
 	            _pso_hw_real x_tmp = local_x[i*part_S + idx];
 	            // v = w*v + c1*r1*(y-x) + c2*r2*(global_min - x)
-				_pso_hw_real v_new = w*v_tmp + _pso_c1*r1*(local_y[i*part_S + idx]-x_tmp) + \
-										_pso_c2*r2*(local_global_min[idx] - x_tmp);
+				_pso_hw_real v_new = w*v_tmp + _pso_c1*r1*(local_y[i*part_S + idx] - x_tmp) + \
+										_pso_c2*r2*(__local_global_min[idx] - x_tmp);
 	            if (v_new > _pso_max_v) 
 					v_new = _pso_max_v;
 				else if (v_new < _pso_min_v) 
@@ -903,8 +1205,8 @@ void updateParticlesWithDuConstrains(
 				_pso_hw_real x_new = x_tmp + v_new;
 				// _pso_hw_real x_dx_tmp = (j==0) ? x_new : x_new - x_ant_k; //x[i][idx]-x[i][idx-1];
 				_pso_hw_real x_dx_tmp = x_new - x_ant_k; //x[i][idx]-x[i][idx-1];
-				_pso_hw_real cmp_max = local_du_max[k];
-				_pso_hw_real cmp_min = local_du_min[k];
+				_pso_hw_real cmp_max = __local_du_max[k];
+				_pso_hw_real cmp_min = __local_du_min[k];
 
 				if (x_dx_tmp > cmp_max)
 					x_new = x_ant_k + cmp_max;
@@ -914,8 +1216,8 @@ void updateParticlesWithDuConstrains(
 					x_new = x_new;
 
                 x_new = verifyControlConstrains(
-					local_u_max[k],
-					local_u_min[k],
+					__local_u_max[k],
+					__local_u_min[k],
 					x_new
 				);
 				
@@ -934,4 +1236,6 @@ void updateParticlesWithDuConstrains(
 		w = _pso_w0;
 	else
 		w = w_tmp;
+
+	return;
 }

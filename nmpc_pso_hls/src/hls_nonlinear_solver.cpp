@@ -115,14 +115,14 @@ int nonlinear_solver_wrapper(
     // memcpy_loop_rolled<_hw_top_real, float, _n_U>(my_uss, (float *)uss );
     
     iterations = execute(    
-        my_x_curr, 
-        my_u_curr, 
+        (_hw_top_real *)my_x_curr, 
+        (_hw_top_real *)my_u_curr, 
         iteration, 
-        my_last_best, 
-        my_xref,
+        (_hw_top_real *)my_last_best, 
+        (_hw_top_real *)my_xref,
         // my_uref, 
         // my_xss,
-        my_new_best,
+        (_hw_top_real *)my_new_best,
         &my_J
     );
 

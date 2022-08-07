@@ -36,11 +36,11 @@
 
 // ---------------------------------------------------
 int execute(
-	volatile _pso_hw_real x_curr[_pso_Nx], 
-	volatile _pso_hw_real u_curr[_pso_n_U], 
+	_pso_hw_real x_curr[_pso_Nx], 
+	_pso_hw_real u_curr[_pso_n_U], 
 	int iteration, 
-	volatile _pso_hw_real last_best[_pso_n_U*_pso_Nu], 
-	volatile _pso_hw_real xref[_pso_Nx*_pso_Nh],
+	_pso_hw_real last_best[_pso_n_U*_pso_Nu], 
+	_pso_hw_real xref[_pso_Nx*_pso_Nh],
 	// volatile _pso_hw_real uref[_pso_n_U], 
 	// volatile _pso_hw_real xss[_pso_Nx],
 	//volatile _pso_hw_real uss[_pso_n_U], 
@@ -65,10 +65,12 @@ _pso_hw_real rand_real(unsigned core){
 
 void initializeParticles_set(
 	// Top Level inputs (FIFO Streams)
-	volatile _pso_hw_real *u_curr,
-	volatile _pso_hw_real *x_curr,
-	volatile _pso_hw_real *xref,
-	volatile _pso_hw_real *last_best,
+#ifndef __SYNTHESIS__
+	_pso_hw_real u_curr[_pso_n_U],
+	_pso_hw_real x_curr[_pso_Nx],
+	_pso_hw_real xref[_pso_Nx*_pso_Nh],
+#endif
+	_pso_hw_real last_best[_pso_Nu*_pso_n_U],
 
 	// Local memories for system constraints created now
 	_pso_hw_real u_curr_local[_pso_n_U],
@@ -236,6 +238,10 @@ void updateParticlesWithDuConstrains(
 	_pso_hw_real *local_du_min,
 	_pso_hw_real *local_u_max,
 	_pso_hw_real *local_u_min
+
+#ifdef __SYNTHESIS__
+	,_rand_real_stream &__rand_port
+#endif
 );
 
 // ---------------------------------------------------
