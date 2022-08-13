@@ -222,6 +222,7 @@ int execute(
 		);
 		// memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_Nu*_pso_n_U>(global_min, (_pso_hw_real *)&y[best_pos * part_S]);
 
+#ifndef PSO_CANON
         updateParticlesWithDuConstrains(
 			u_curr_local,
 			// w,
@@ -243,6 +244,18 @@ int execute(
 			, __rand_port
 #endif
 		);    
+#else
+		updateParticles(
+			x,
+			y,
+			v,
+
+			global_min,
+
+			(_pso_hw_real *)_pso_u_max,
+			(_pso_hw_real *)_pso_u_min
+		);
+#endif
 #ifdef DEBUG_PSO
 		std::cout << "[" << k << "] ";
 		std::cout << "\t"; print_formatted_float_array(&global_min[0], n_U, 2, 6);
@@ -549,37 +562,6 @@ void initializeParticles_set(
 #endif
 ){
 
-// #pragma HLS interface mode=ap_fifo port=u_curr
-// #pragma HLS interface mode=ap_fifo port=x_curr
-// #pragma HLS interface mode=ap_fifo port=xref
-// #pragma HLS interface mode=ap_fifo port=last_best
-
-// #pragma HLS interface mode=bram storage_type=RAM_1WNR port=xref_local 
-// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=u_curr_local
-// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=x_curr_local
-
-// #pragma HLS interface mode=bram storage_type=RAM_1WNR name=x port=local_x
-// #pragma HLS interface mode=bram storage_type=RAM_1WNR name=y port=local_y
-// #pragma HLS interface mode=bram storage_type=RAM_1WNR name=v port=local_v
-
-// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=f_ind_local
-
-// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_du_min
-// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_du_max
-// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_u_min
-// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_u_max
-// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_uss
-
-// #ifdef __SYNTHESIS__
-// #pragma HLS interface mode=ap_fifo port=__rand_port
-// #endif
-
-
-// #pragma HLS INTERFACE mode=m_axi port=u_curr	offset=slave depth=n_U			bundle=nmpc_input
-// #pragma HLS INTERFACE mode=m_axi port=x_curr	offset=slave depth=Nx			bundle=nmpc_input 
-// #pragma HLS INTERFACE mode=m_axi port=xref		offset=slave depth=size_xref	bundle=nmpc_input
-// #pragma HLS INTERFACE mode=m_axi port=last_best	offset=slave depth=part_S		bundle=nmpc_input
-
 #pragma HLS INTERFACE mode=m_axi port=local_x offset=off depth=part_S_mem bundle=x_mem
 #pragma HLS INTERFACE mode=m_axi port=local_y offset=off depth=part_S_mem bundle=y_mem
 #pragma HLS INTERFACE mode=m_axi port=local_v offset=off depth=part_S_mem bundle=v_mem
@@ -607,6 +589,7 @@ void initializeParticles_set(
 	memcpy_loop_rolled<_pso_hw_real, volatile _pso_hw_real, _pso_Nx*_pso_Nh>(xref_local, xref);
 #endif
 
+#ifndef PSO_CANON
 	// w = _pso_w0;
 	calculate_du_min(
 		local_du_min,
@@ -646,6 +629,17 @@ void initializeParticles_set(
 
 		particle_stable_zero
 	);
+#else
+	initializeParticles(
+		local_u_max,
+		local_u_min,
+
+		local_x,
+		local_y,
+		local_v
+	)
+		
+#endif
 
     // initializeBestLocalFitness();
 	memset_loop<_pso_hw_real>(f_ind_local, (const _pso_hw_real)H_MAX, n_S);
@@ -884,17 +878,15 @@ void initializeParticlesWithDuConstrains(
 	}
 }
 
-#ifdef PSO_CANON
-
 // ---------------------------------------------------
 
 void  initializeParticles(
-    // _pso_hw_real _x[][_pso_Nu*_pso_n_U], 
-    // _pso_hw_real _y[][_pso_Nu*_pso_n_U], 
-    // _pso_hw_real _v[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real **_x, 
-    // _pso_hw_real **_y, 
-    // _pso_hw_real **_v
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min,
+
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
+	_pso_hw_real *local_v
 ) {
 // GENERAL PSO INITIALIZATION OF PARTICLES
 	_pso_hw_real d_max = 0.2;
@@ -906,51 +898,21 @@ void  initializeParticles(
 				int idx = j*n_U + k;
 				_pso_hw_real rand_tmp; 
 				rand_real(rand_tmp);
-				_pso_hw_real x_tmp = (j == 0)? 
-					u_min[k] + (u_max[k]-u_min[k]) * rand_tmp: //random->read();
-					x_ant[k] - d_max + (d2_max) * rand_tmp; //random->read();
-				x[i*part_S + idx] = x_tmp; 
-				y[i*part_S + idx] = H_MAX;
-				v[i*part_S + idx] = init_v;  
+				_pso_hw_real x_tmp;
+				if (j == 0) 
+					x_tmp = local_u_min[k] + (local_u_max[k]-local_u_min[k]) * rand_tmp; //random->read();
+				else
+					x_tmp = x_ant[k] - d_max + (d2_max) * rand_tmp; //random->read();
+				local_x[i*part_S + idx] = x_tmp; 
+				local_y[i*part_S + idx] = x_tmp;
+				local_v[i*part_S + idx] = _pso_init_v;  
 				x_ant[k] = x_tmp;
 			}
         }
-        valid_particle[i] = 1;
+        // valid_particle[i] = 1;
     }
 }
-#endif
 
-// ---------------------------------------------------
-
-// void initializeLastBestKPSO(
-// 	_pso_hw_real volatile *last_best,
-
-// 	_pso_hw_real *local_x_max_first,
-// 	_pso_hw_real *local_x_min_first,
-// 	_pso_hw_real *local_x,
-
-// 	int index
-// ){
-// // #pragma HLS inline
-// 	// Uses KPSO (best last position)
-
-// 	for (unsigned int i = 0; i < n_U; i++){
-// #pragma HLS pipeline
-// 		_pso_hw_real last_best_tmp = last_best[i];
-// 		_pso_hw_real x_i;
-// 		if (last_best_tmp > local_x_max_first[i]) 
-// 			x_i = local_x_max_first[i];
-// 		else if (last_best_tmp < local_x_min_first[i])
-// 			x_i = local_x_min_first[i];
-// 		else 
-// 			x_i = last_best_tmp;
-// 		local_x[index*part_S + i] = x_i;
-// 	}
-
-// 	for (unsigned int i = 0; i < (Nu*n_U); i++) {
-// 		local_x[index*part_S + i] = last_best[i];			
-// 	}
-// }
 
 // ---------------------------------------------------
 
@@ -1014,24 +976,12 @@ void evaluateFitnessAndDetectLocalBest(
 	// _pso_hw_real *local_fx//[_pso_n_U],
 ){
 
-// #pragma HLS interface mode=bram storage_type=RAM_1WNR name=x port=local_x
-// #pragma HLS interface mode=bram storage_type=RAM_1WNR name=y port=local_y
-
-// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_x_curr
-// #pragma HLS interface mode=bram storage_type=RAM_1WNR port=local_xref 
-// #pragma HLS interface mode=bram	storage_type=RAM_1WNR port=local_f_ind
-
 #pragma HLS INTERFACE mode=m_axi port=local_x offset=off depth=part_S_mem bundle=x_mem
 #pragma HLS INTERFACE mode=m_axi port=local_y offset=off depth=part_S_mem bundle=y_mem
 
 #pragma HLS INTERFACE mode=m_axi port=local_x_curr	offset=direct	depth=Nx		bundle=current_mem 
 #pragma HLS INTERFACE mode=m_axi port=local_xref	offset=direct	depth=size_xref	bundle=current_mem 
 #pragma HLS INTERFACE mode=m_axi port=local_f_ind 	offset=direct	depth=n_S bundle=constraints_mem
-
-
-// #pragma HLS array_partition variable=local_x 		type=block factor=n_S 
-// #pragma HLS array_partition variable=local_y 		type=block factor=n_S 
-
 
 	_pso_hw_real fx[_pso_n_S];
 #pragma HLS array_partition variable=fx	type=complete factor=n_S 
@@ -1067,18 +1017,18 @@ void evaluateFitnessAndDetectLocalBest(
 }
 
 // ---------------------------------------------------
-#ifdef PSO_CANON
 
 void updateParticles(
-//	_pso_hw_real global_min[],
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
+	_pso_hw_real *local_v,
 
-    // _pso_hw_real _x[][_pso_Nu*_pso_n_U],
-    // _pso_hw_real _y[][_pso_Nu*_pso_n_U],
-    // _pso_hw_real _v[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real **_x,
-	// _pso_hw_real **_y,
-	// _pso_hw_real **_v
+	_pso_hw_real *local_global_min,
+
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min
 ){    
+	static _pso_hw_real w = _pso_w0;
 
     // Update Particles
     for (unsigned int i = 0; i < n_S; ++i) {
@@ -1086,27 +1036,40 @@ void updateParticles(
 	 	   	for (unsigned int j = 0; j < n_U; ++j) {
     	 		int idx = k*Nu+j;
 	
-				_pso_hw_real v_tmp = v[i*part_S + idx];
-				_pso_hw_real x_tmp = x[i*part_S + idx];
+				_pso_hw_real v_tmp = local_v[i*part_S + idx];
+				_pso_hw_real x_tmp = local_x[i*part_S + idx];
 				
 				_pso_hw_real r1, r2;
 				rand_real(r1); //random->read();
 				rand_real(r2); //random->read();
 
 				// v = w*v + c1*r1*(y-x) + c2*r2*(global_min - x)
-				_pso_hw_real v_new = w*v_tmp + c1*r1*(y[i*part_S + idx]-x_tmp) + c2*r2*(global_min[idx] - x_tmp);
+				_pso_hw_real v_new = w*v_tmp + _pso_c1*r1*(local_y[i*part_S + idx]-x_tmp) + _pso_c2*r2*(local_global_min[idx] - x_tmp);
 
-                v_new = (v_new > max_v) ? max_v : v_new;
-				v_new = (v_new < min_v) ? min_v : v_new;
-				v[i*part_S + idx] = v_new;
+                if (v_new > _pso_max_v) 
+					v_new = _pso_max_v;
+				else if (v_new < _pso_min_v)
+					v_new = _pso_min_v;
+				else 
+					v_new = v_new;
+				local_v[i*part_S + idx] = v_new;
 
 				_pso_hw_real x_new = x_tmp + v_new;
-				x[i*part_S + idx] = verifyControlConstrains(x_new, k);
+				local_x[i*part_S + idx] = verifyControlConstrains(
+					local_u_max[k],
+					local_u_min[k],
+					x_tmp);
             } // END FOR j
         } // End FOR k
     } // END FOR i
+
+	_pso_hw_real w_tmp = w + _pso_slope;
+	if (w_tmp <= _pso_wf)
+		w = _pso_w0;
+	else
+		w = w_tmp;
+
 }
-#endif
 
 // ---------------------------------------------------
 

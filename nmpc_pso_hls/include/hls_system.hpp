@@ -70,6 +70,7 @@ protected:
     // _system_hw_real acc_max[_system_n_U];
     // _system_hw_real acc_min[_system_n_U];
 //    _system_model_t model_ptr;
+    const _system_hw_model_real system_pi = 3.14159265358979323846264338327950288;
 public:
     constexpr System(
         const _system_hw_real __u_max[_system_n_U],
@@ -87,7 +88,7 @@ public:
         // _system_model_t __model_ptr
     ) : Ts(__Ts), Ts_2(__Ts*(_system_hw_real)0.5), Ts_6(__Ts*(_system_hw_real)0.1666666667),
         uss(__uss), u_max(__u_max), u_min(__u_min), du_max(__du_max),
-        controlled_state(__controlled_state), 
+        controlled_state(__controlled_state),
         state_upper_limits(__state_upper_limits), state_lower_limits(__state_lower_limits),
         Q(__Q), Qf(__Qf), R(__R)
         // ,
@@ -414,9 +415,15 @@ protected:
             current_x_hat = x_hat[j];
             current_x_ref = xref[j];
             _system_hw_real tmp_err;
+            _system_hw_real tmp_err_ang =  (system_pi*2 - current_x_hat);
             
             if (controlled_state[j] == 1) 
                 tmp_err = (current_x_hat - current_x_ref);
+            else if (controlled_state[j] == 2) 
+                if ((current_x_hat > system_pi) && (current_x_ref < system_pi))
+                    tmp_err = (tmp_err_ang - current_x_ref);
+                else
+                    tmp_err = (current_x_hat - current_x_ref);
             else
                 tmp_err = (_system_hw_real)0.0;;
 

@@ -9,9 +9,6 @@
 // #include "hls_pseudorand.hpp"
 // #include "aux_functions.hpp"
 
-#define H_MAX 60000.0f
-
-
 // #if _Parametrization > 0
 //     #define _Nn     _Parametrization
 //     #define _pso_Nuu    _N
@@ -49,18 +46,8 @@ int execute(
 	_pso_hw_real J[1]
 );
 
-// Misc Functions
-// ---------------------------------------------------
-/*
-_pso_hw_real rand_real(unsigned core){
-#if (defined(__SYNTHESIS__) || defined(SYNTH_RAND))
-	_pso_hw_real return_value = randGen.rand_num(core);
-#else
-	_pso_hw_real return_value = (_pso_hw_real)rand()/(_pso_hw_real)RAND_MAX;
-#endif
-	return return_value;
-}
-*/
+// Top Functions
+
 // ---------------------------------------------------
 
 void initializeParticles_set(
@@ -97,22 +84,14 @@ void initializeParticles_set(
 #endif
 );
 
+// Aux Functions
+
 // ---------------------------------------------------
 
 void rand_real(_pso_hw_real &rand_value);
 
 // Init Functions
-// ---------------------------------------------------
-// void initializeConstrains(
-// 	volatile _pso_hw_real *u_curr,
-// 	_pso_hw_real *local_du_max,
-// 	_pso_hw_real *local_du_min,
-// 	_pso_hw_real *local_u_max,
-// 	_pso_hw_real *local_u_min
 
-	// _pso_hw_real *local_x_max_first,
-	// _pso_hw_real *local_x_min_first
-// );
 // ---------------------------------------------------
 void calculate_du_min(
 	_pso_hw_real *_local_du_min,
@@ -129,16 +108,12 @@ _pso_hw_real verifyControlConstrains(
 	_pso_hw_real local_u_min,
 	_pso_hw_real value
 );
-#ifdef PSO_CANON
 // ---------------------------------------------------
 void detectInvalidParticles(
 	int iter, 
 	int best_pos
 	
-//	_pso_hw_real _x[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real *_x
 );
-#endif
 
 // ---------------------------------------------------
 void initializeParticlesWithDuConstrains(
@@ -159,27 +134,16 @@ void initializeParticlesWithDuConstrains(
 #endif
 );
 
-#ifdef PSO_CANON
 // ---------------------------------------------------
 void initializeParticles(
-    // _pso_hw_real _x[][_pso_Nu*_pso_n_U], 
-    // _pso_hw_real _y[][_pso_Nu*_pso_n_U], 
-    // _pso_hw_real _v[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real **_x, 
-    // _pso_hw_real **_y, 
-    // _pso_hw_real **_v
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min,
+
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
+	_pso_hw_real *local_v
 );
-#endif
-// ---------------------------------------------------
-// void initializeLastBestKPSO(
-// 	_pso_hw_real volatile *last_best,
 
-// 	_pso_hw_real *local_x_max_first,
-// 	_pso_hw_real *local_x_min_first,
-// 	_pso_hw_real *local_x,
-
-// 	int index
-// );
 // ---------------------------------------------------
 void initializeStableZero(
 	_pso_hw_real *uss_local, 
@@ -194,6 +158,7 @@ void initializeStableZero(
 	
 	int index
 );
+
 // Workflow Functions
 // ---------------------------------------------------
 void evaluateFitnessAndDetectLocalBest(
@@ -207,18 +172,18 @@ void evaluateFitnessAndDetectLocalBest(
 	// _pso_hw_real *local_fx//[_pso_n_U],
 );
 // ---------------------------------------------------
-#ifdef PSO_CANON
-void updateParticles(
-//	_pso_hw_real global_min[],
 
-    // _pso_hw_real _x[][_pso_Nu*_pso_n_U],
-    // _pso_hw_real _y[][_pso_Nu*_pso_n_U],
-    // _pso_hw_real _v[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real **_x,
-	// _pso_hw_real **_y,
-	// _pso_hw_real **_v
+void updateParticles(
+	_pso_hw_real *local_x,
+	_pso_hw_real *local_y,
+	_pso_hw_real *local_v,
+
+	_pso_hw_real *local_global_min,
+
+	_pso_hw_real *local_u_max,
+	_pso_hw_real *local_u_min
 );
-#endif
+
 // ---------------------------------------------------
 void updateParticlesWithDuConstrains(
 	_pso_hw_real *local_u_curr,

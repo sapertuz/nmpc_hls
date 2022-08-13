@@ -74,12 +74,12 @@ const _hw_top_real rand_max = 1.0;
     const _hw_top_real _pmax[] = {1.0};
     const _hw_top_real _pmin[] = {-1.0};
 
-    const unsigned short _controlled_state[] = {0, 0, 1, 0};
-    const _hw_top_real _state_upper_limits[] = {10, 1e3, 1e3, 1e3} ;
-    const _hw_top_real _state_lower_limits[] = {-10, -1e3, -1e3, -1e3} ;
-    const _hw_top_real _Q[] = {0.05, 0.0, 10, 0.0};
-    const _hw_top_real _Qf[] = {1, 0,0, 1e3, 0.0};
-    const _hw_top_real _R[] = {0.000001};
+    const unsigned short _controlled_state[] = {1, 0, 2, 0};
+    const _hw_top_real _state_upper_limits[] = {1, 1e3, 1e3, 1e3} ;
+    const _hw_top_real _state_lower_limits[] = {-1, -1e3, -1e3, -1e3} ;
+    const _hw_top_real _Q[] = {1, 0.0, 1, 0.0};
+    const _hw_top_real _Qf[] = {0.1, 0.0, 0.1, 0.0};
+    const _hw_top_real _R[] = {.001};
 
     #define _Rising_Time 0
     const _hw_top_real _tr[] =  {0, 0, 0, 0};
@@ -108,7 +108,7 @@ const _hw_top_real rand_max = 1.0;
     const _hw_top_real  _pmin[] =  {-1, -1, -1, -1};
 
     const _hw_top_real drone_pi = 3.14159265359;
-    const unsigned short _controlled_state[] = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0};
+    const unsigned short _controlled_state[] = {1, 1, 1, 2, 2, 2, 0, 0, 0, 0, 0, 0};
     const _hw_top_real  _state_upper_limits[_Nx] =  { 
          1e3,  
          1e3,  
@@ -167,5 +167,11 @@ const int _pragma_Nh = _Nh;
 const int _pragma_Nu = _Nu;
 const int _pragma_Nx = _Nx;
 const int _pragma_n_U = _n_U;
+
+#ifndef __SYNTHESIS__
+const _hw_top_real H_MAX = 3.4028234664e30;
+#else
+const _hw_top_real H_MAX = 60000.0;
+#endif
 
 #endif

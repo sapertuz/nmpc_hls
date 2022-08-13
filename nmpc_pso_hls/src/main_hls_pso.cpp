@@ -13,15 +13,6 @@
 #include "aux_functions.hpp"
 
 #include "hls_system.hpp"
-/*
-// Test
-// {
-#include "config.hpp"
-#include "hls_pseudorand.hpp"
-#include "hls_system.hpp"
-#include "hls_pso.hpp"
-// }
-*/
 
 /************************** Constant Definitions *****************************/
 
@@ -33,39 +24,16 @@
 //#define PSO_CONFIG
 const char config_file_std[] = "./config/sniffbot/project_config.txt";
 const char sim_config_file_std[] = "./config/sniffbot/simulation_config_ring.txt";
-
-
+const char matlab_name_std[] = "sniffbot";
 
 /************************** Class Definitions ****************************/
-// Test
-// {
-// typedef _hw_top_real _pso_real;
-// }
+
 
 /***************** Macros (Inline Functions) Definitions *********************/
 
 /*
  * Wrapper for non_linear solver
  */
-
-/*
-// Test
-// {
-int nonlinear_solver_wrapper(
-    volatile float *x_curr,//[_Nx], 
-    volatile float *u_curr,//[_n_U], 
-    int iteration, 
-    volatile float *last_best,//[_Nu*_n_U], 
-    volatile float *xref,//[_Nu*_Nx], 
-    volatile float *uref,//[_n_U], 
-    volatile float *xss,//[_Nx],
-    volatile float *uss,//[_n_U], 
-    
-    float *new_best,//[_Nu*_n_U],
-    float *J
-);
-// }
-*/
 
 /*
  * Simulation Functions
@@ -76,6 +44,14 @@ void initialize_LastBest(float * last_best);
 void initializeFilteringCoefficients(int number_of_states);
 void add_disturbance(int iter);
 void update_system();
+
+void export_matrix_to_file(
+    std::ofstream& file, float ** matrix, 
+    int rows, int columns, std::string name);
+void export_vector_to_file(
+    std::ofstream& file, const float * vector, 
+    int rows, std::string name, int row_size);
+void save(char * local_matlab_name);
 
 /************************** Variable Definitions *****************************/
 
@@ -93,6 +69,7 @@ float SimulationTime;
 
 std::string sim_type;
 std::string simulation_config_file;
+std::string matlab_file_name;
 
 int qtd_pontos;
 int ref_size;
@@ -109,6 +86,8 @@ float * u_curr;
 
 float ** control_history;
 float ** state_history;
+float ** xref_history;
+float ** uref_history;
 float * iterations;
 float * cost_history;
 
@@ -120,66 +99,6 @@ int disturbance_size = 0;
 float ** disturbance_history;
 float ** disturbance_matrix;
 float friction_coefficient;
-
-/*
-// Test
-// {
-// Model Core Generator
-top_model_t my_model;
-top_model_t *my_model_ptr = &my_model;
-// System Core Generator
-typedef System<_pso_real,top_model_t,_Nh, _Nx, _n_U, _Nu> _system_t; 
-_system_t _hw_system(
-    _u_max, 
-    _u_min, 
-    _du_max,
-    _controlled_state,
-    _state_upper_limits, 
-    _state_lower_limits, 
-    _Q, 
-    _Qf, 
-    _R, 
-    _uss, 
-    _Ts
-    ,
-    my_model_ptr
-);
-// Pseudo Random Core Generator
-typedef pseudoRand_gen<_pso_real, _n_S> _randCore_t;
-_randCore_t _hw_rand_core(
-    (const float)rand_min, 
-    (const float)rand_max
-);
-// Nonlinear PSO Solver
-_system_t *_hw_system_ptr = &_hw_system;
-_randCore_t *_hw_rand_core_ptr = &_hw_rand_core;
-typedef PSO<_pso_real, _randCore_t, _system_t, _n_S, _maxiter, _Nh, _Nx, _n_U, _Nu> T_solver;
-T_solver my_solver(
-    _stable_zero,
-    _max_v,
-    _w0,
-    _wf,
-    _slope,
-    _c1,
-    _c2,
-    _u_min,
-    _u_max,
-    _du_max,
-    _uss
-    ,
-    // _controlled_state,
-    // _state_upper_limits, 
-    // _state_lower_limits, 
-    // _Q, 
-    // _Qf, 
-    // _R, 
-    // _Ts
-    // ,
-    _hw_system_ptr,
-    _hw_rand_core_ptr
-);
-// }
-*/
 
 /*****************************************************************************/
 /**
@@ -200,17 +119,21 @@ int main(int argc, char ** argv){
     std::cout << "Start KPSO NMPC" << std::endl;
     twist_ref = 0;
     char *config_file;
-    char *sim_config_file;    
+    char *sim_config_file;   
+    char *matlab_name; 
 //    try {
-        if (argc == 3){
+        if (argc == 4){
             config_file = argv[1];
             sim_config_file = argv[2];
+            matlab_name = argv[3];
         }else{
             std::cout << "Running with standard project_config file." << std::endl;
             config_file = (char *) malloc(sizeof(config_file_std)*sizeof(config_file_std));
             sim_config_file = (char *) malloc(sizeof(sim_config_file_std)*sizeof(sim_config_file_std)); 
+            matlab_name = (char *) malloc(sizeof(matlab_name_std)*sizeof(matlab_name_std));
             std::memcpy(config_file, config_file_std, sizeof(config_file_std)*sizeof(config_file_std[0]));
             std::memcpy(sim_config_file, sim_config_file_std, sizeof(sim_config_file_std)*sizeof(sim_config_file_std[0]));
+            std::memcpy(matlab_name, matlab_name_std, sizeof(matlab_name_std)*sizeof(matlab_name_std[0]));
         }
         // config_file = (char *) malloc(sizeof(config_file_tmp)*sizeof(config_file_tmp));
         // std::memcpy
@@ -242,7 +165,7 @@ int main(int argc, char ** argv){
         float * initial_state;
 
         // Read Configuration File
-        float SimulationTime = read_real(&sim_config, (std::string)"SimulationTime");
+        SimulationTime = read_real(&sim_config, (std::string)"SimulationTime");
 #ifdef PRINT_TO_TERMINAL
 	std::cout << "Simulation Time = " << SimulationTime << std::endl;
 #endif
@@ -267,6 +190,8 @@ int main(int argc, char ** argv){
         if((state_matrix = alloc_matrix(ref_size, _Nx+1)) == NULL) {return(-1);}
         if((state_history = alloc_matrix(qtd_pontos, _Nx)) == NULL) {return -1;}
         if((control_history = alloc_matrix(qtd_pontos, _n_U)) == NULL) {return -1;}
+        if((xref_history = alloc_matrix(qtd_pontos, _Nx)) == NULL) {return -1;}
+        if((uref_history = alloc_matrix(qtd_pontos, _n_U)) == NULL) {return -1;}
         // if((disturbance_history = alloc_matrix(qtd_pontos, _n_U+1)) == NULL) {return -1;}
         // if((disturbance_matrix = alloc_matrix(disturbance_size, _n_U+1)) == NULL) {return -1;}
 
@@ -287,9 +212,11 @@ int main(int argc, char ** argv){
             int index_uref = i*_n_U;
             for (int j = 0; j < _Nx; ++j) {
                 xref[index_xref+j] = state_matrix[k][j+1];
+                xref_history[i][j] = state_matrix[k][j+1];
             }
             for (unsigned int j = 0; j < _n_U; j++){
                 uref[index_uref+j] = u_ref_input[j];
+                uref_history[i][j] = u_ref_input[j];
             }
             if(sim_time >= state_matrix[k][0]) {
                 if(k < (ref_size-1))
@@ -458,6 +385,8 @@ int main(int argc, char ** argv){
 
     std::cout << "Avg.: " << accum/qtd_pontos*1000 << " ms | " << "Max: " << max_cycle_time*1000 << " ms | Ts: " << (float)_Ts*1000 << " ms" << std::endl;
 
+    save(matlab_name);
+
     if(last_best != NULL) free(last_best);
     if(new_best != NULL) free(new_best);
 	if(curr_state != NULL) free(curr_state);
@@ -519,84 +448,71 @@ void add_disturbance(int iter){
     }
 }
 
-/*
-
-// Test
-// {
-int nonlinear_solver_wrapper(
-    volatile float *x_curr,//[_Nx], 
-    volatile float *u_curr,//[_n_U], 
-    int iteration, 
-    volatile float *last_best,//[_Nu*_n_U], 
-    volatile float *xref,//[_Nu*_Nx], 
-    volatile float *uref,//[_n_U], 
-    volatile float *xss,//[_Nx],
-    volatile float *uss,//[_n_U], 
-    
-    float *new_best,//[_Nu*_n_U],
-    float *J
-){
-#pragma HLS INTERFACE s_axilite port=return         bundle=control
-
-#pragma HLS INTERFACE s_axilite port=x_curr         bundle=control
-#pragma HLS INTERFACE s_axilite port=u_curr         bundle=control
-#pragma HLS INTERFACE s_axilite port=iteration      bundle=control
-#pragma HLS INTERFACE s_axilite port=last_best      bundle=control
-#pragma HLS INTERFACE s_axilite port=xref           bundle=control
-#pragma HLS INTERFACE s_axilite port=uref           bundle=control
-#pragma HLS INTERFACE s_axilite port=xss            bundle=control
-#pragma HLS INTERFACE s_axilite port=uss            Bundle=control
-#pragma HLS INTERFACE s_axilite port=new_best       bundle=control
-
-#pragma HLS INTERFACE m_axi depth=12    port=x_curr     offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=4     port=u_curr     offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=1     port=iteration  offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=40    port=last_best  offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=120   port=xref       offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=4     port=uref       offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=12    port=xss        offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=4     port=uss        offset=slave bundle=input
-#pragma HLS INTERFACE m_axi depth=120   port=new_best   offset=slave bundle=input
-
-    int iterations;
-	_pso_real my_x_curr[_Nx] ;
-	_pso_real my_u_curr[_n_U] ;
-	_pso_real my_last_best[_n_U*_Nu] ;
-	_pso_real my_xref[_Nx*_Nh];
-	_pso_real my_uref[_n_U] ;
-	_pso_real my_xss[_Nx];
-	_pso_real my_uss[_n_U] ;
-
-	_pso_real my_new_best[_Nu*_n_U];
-	_pso_real my_J;
-
-//#pragma HLS bind_storage variable=local_control_guess type=FIFO impl=LUTRAM
-
-    memcpy_loop_rolled<_pso_real, float, _Nx>(my_x_curr, (float *)x_curr );
-    memcpy_loop_rolled<_pso_real, float, _n_U>(my_u_curr, (float *)u_curr );
-    memcpy_loop_rolled<_pso_real, float, _Nu*_n_U>(my_last_best, (float *)last_best );
-    memcpy_loop_rolled<_pso_real, float, _Nu*_Nx>(my_xref, (float *)xref );
-    memcpy_loop_rolled<_pso_real, float, _n_U>(my_uref, (float *)uref );
-    memcpy_loop_rolled<_pso_real, float, _Nx>(my_xss, (float *)xss );
-    memcpy_loop_rolled<_pso_real, float, _n_U>(my_uss, (float *)uss );
-    
-    iterations = my_solver.execute(
-        my_x_curr, 
-        my_u_curr, 
-        iteration, 
-        my_last_best, 
-        my_xref,
-        my_uref, 
-        my_xss,
-        my_new_best,
-        &my_J
-    );
-
-    memcpy_loop_rolled<float, _pso_real, _Nu*_n_U>(new_best, (_pso_real *)my_new_best );
-    J[0] = (float) my_J;
-    return iterations;
-
+void export_matrix_to_file(
+    std::ofstream& file, float ** matrix, 
+    int rows, int columns, std::string name
+) {
+	file << name << " = [";
+	for (int i = 0; i < rows; ++i) {
+		for (int j = 0; j < columns; ++j) {
+			file << std::scientific << matrix[i][j] << " ";
+		}
+		file << ";" << std::endl << "\t";
+	}
+	file << "];" << std::endl;
 }
-// }
 
-*/
+void export_vector_to_file(
+    std::ofstream& file, const float * vector, 
+    int rows, std::string name, int row_size
+) {
+	file << name << " = [";
+	for (int i = 0; i < rows; ++i) {
+		file << std::scientific << vector[i] << " ";
+        if((row_size > 0) && (((i+1) % row_size) == 0))
+            file << ";" << std::endl << "\t";
+	}
+	file << "];" << std::endl;
+}
+
+void save(char * local_matlab_name){
+	using namespace std;
+
+	float * upper_limits;
+	float * lower_limits;
+
+	ofstream sim_matlab;
+    std::string of_name = "./matlab/";
+    of_name += local_matlab_name;
+    of_name += ".m";
+	sim_matlab.open(of_name, ios::out);
+
+#ifdef PRINT_TO_TERMINAL
+	cout << "Export Simulation data do Matlab File: " << of_name << endl;
+#endif
+
+	export_matrix_to_file(sim_matlab, state_history, qtd_pontos, _Nx, "NMPC_SIM.state_history");
+	export_matrix_to_file(sim_matlab, control_history, qtd_pontos, _n_U, "NMPC_SIM.control_history");
+
+    // export_matrix_to_file(sim_matlab, disturbance_history, qtd_pontos, _n_U, "NMPC_SIM.disturbance_history");
+
+	// export_vector_to_file(sim_matlab, control_history, qtd_pontos, "NMPC_SIM.control_history", 0);
+	export_vector_to_file(sim_matlab, iterations, qtd_pontos, "NMPC_SIM.iterations", 0);
+	export_vector_to_file(sim_matlab, cost_history, qtd_pontos, "NMPC_SIM.cost_history", 0);
+    
+    export_matrix_to_file(sim_matlab, xref_history, qtd_pontos, _Nx, "NMPC_SIM.xref");
+	export_matrix_to_file(sim_matlab, uref_history, qtd_pontos, _Nx, "NMPC_SIM.uref");
+
+    export_vector_to_file(sim_matlab, _state_upper_limits, _Nx, "Model.x_max", 0);
+	export_vector_to_file(sim_matlab, _state_lower_limits, _Nx, "Model.x_min", 0);
+
+	export_vector_to_file(sim_matlab, _u_max, _n_U, "Model.u_max", 0);
+	export_vector_to_file(sim_matlab, _u_min, _n_U, "Model.u_min", 0);
+
+	sim_matlab << "Model.Ts = " << _Ts << ";" << endl;
+	sim_matlab << "Model.SimulationTime = " << SimulationTime << ";" << endl;
+	sim_matlab << "Model.PredictionHorizon = " << _Nh << ";" << endl;
+	sim_matlab << "Model.ControlHorizon = " << _Nu << ";" << endl;
+
+	sim_matlab.close();
+}
