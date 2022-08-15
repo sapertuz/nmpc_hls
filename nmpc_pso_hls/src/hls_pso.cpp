@@ -637,7 +637,7 @@ void initializeParticles_set(
 		local_x,
 		local_y,
 		local_v
-	)
+	);
 		
 #endif
 
@@ -783,38 +783,6 @@ _pso_hw_real verifyControlConstrains(
 
 	return return_value;
 }
-
-// ---------------------------------------------------
-#ifdef PSO_CANON
-
-void detectInvalidParticles(
-	int iter, 
-	int best_pos
-	
-//	_pso_hw_real _x[][_pso_Nu*_pso_n_U]
-	// _pso_hw_real *_x
-){
-	for (unsigned int i = 0; i < n_S; ++i) {
-        if(n_S != best_pos) {
-            if((std::abs(fx[i]-bestfitness[iter])/bestfitness[iter]) < 0.0001){
-//                int count = 0;  
-                int count = Nh*n_U;
-                for (unsigned int j = 0; j < Nh*n_U; ++j) {
-                    if((std::abs(x[i*part_S + j]-global_min[j])/global_min[j]) < 0.0001){
-                        count--;
-                    }
-                }
-                if((valid_particle[i] == 1) && (count == 0)){
-                    valid_particle[i] = 0;
-                    number_of_active_particles--;
-                }
-            }
-        }
-    }
-
-}
-#endif
-
 
 // ---------------------------------------------------
 
@@ -1032,9 +1000,9 @@ void updateParticles(
 
     // Update Particles
     for (unsigned int i = 0; i < n_S; ++i) {
-		for (unsigned int k = 0; k < Nu; ++k) {
-	 	   	for (unsigned int j = 0; j < n_U; ++j) {
-    	 		int idx = k*Nu+j;
+		for (unsigned int j = 0; j < Nu; ++j) {
+	 	   	for (unsigned int k = 0; k < n_U; ++k) {
+    	 		int idx = j*n_U+k;
 	
 				_pso_hw_real v_tmp = local_v[i*part_S + idx];
 				_pso_hw_real x_tmp = local_x[i*part_S + idx];
@@ -1044,7 +1012,8 @@ void updateParticles(
 				rand_real(r2); //random->read();
 
 				// v = w*v + c1*r1*(y-x) + c2*r2*(global_min - x)
-				_pso_hw_real v_new = w*v_tmp + _pso_c1*r1*(local_y[i*part_S + idx]-x_tmp) + _pso_c2*r2*(local_global_min[idx] - x_tmp);
+				_pso_hw_real v_new = w*v_tmp + _pso_c1*r1*(local_y[i*part_S + idx]-x_tmp) +\
+										_pso_c2*r2*(local_global_min[idx] - x_tmp);
 
                 if (v_new > _pso_max_v) 
 					v_new = _pso_max_v;
@@ -1058,7 +1027,7 @@ void updateParticles(
 				local_x[i*part_S + idx] = verifyControlConstrains(
 					local_u_max[k],
 					local_u_min[k],
-					x_tmp);
+					x_new);
             } // END FOR j
         } // End FOR k
     } // END FOR i
@@ -1069,6 +1038,7 @@ void updateParticles(
 	else
 		w = w_tmp;
 
+	return;
 }
 
 // ---------------------------------------------------
@@ -1128,14 +1098,6 @@ void updateParticlesWithDuConstrains(
 	// Update particles
 	_pso_hw_real x_ant[_pso_n_U], x_ant_tmp[_pso_n_U];
     for (unsigned int i = 0; i < n_S; ++i) {	
-// #pragma UNROLL
-// #pragma HLS ALLOCATION operation instances=mul 	  limit=1 
-// #pragma HLS ALLOCATION operation instances=add 	  limit=1 
-// #pragma HLS ALLOCATION operation instances=sub 	  limit=1 
-// #pragma HLS ALLOCATION operation instances=hmul 	  limit=1 
-// #pragma HLS ALLOCATION operation instances=hadd 	  limit=1 
-// #pragma HLS ALLOCATION operation instances=hsub 	  limit=1 
-// #pragma HLS ALLOCATION function  instances=rand_real limit=1 
 		memcpy_loop_rolled<_pso_hw_real, _pso_hw_real, _pso_n_U>(x_ant_tmp, (_pso_hw_real*)local_u_curr);
         //if(valid_particle[i] == 1){
     	 for (unsigned int j = 0; j < Nu; ++j) {

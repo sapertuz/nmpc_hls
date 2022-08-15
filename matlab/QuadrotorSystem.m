@@ -1,4 +1,4 @@
-function y = system_drone(~, x, u, Ts)
+function y = QuadrotorSystem(~, x, u, Ts)
     global  counter
     if isempty( counter )
         counter=0; %Initializing counter

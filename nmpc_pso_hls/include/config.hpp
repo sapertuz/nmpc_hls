@@ -74,11 +74,11 @@ const _hw_top_real rand_max = 1.0;
     const _hw_top_real _pmax[] = {1.0};
     const _hw_top_real _pmin[] = {-1.0};
 
-    const unsigned short _controlled_state[] = {1, 0, 2, 0};
+    const unsigned short _controlled_state[] = {1, 1, 2, 0};
     const _hw_top_real _state_upper_limits[] = {1, 1e3, 1e3, 1e3} ;
     const _hw_top_real _state_lower_limits[] = {-1, -1e3, -1e3, -1e3} ;
-    const _hw_top_real _Q[] = {1, 0.0, 1, 0.0};
-    const _hw_top_real _Qf[] = {0.1, 0.0, 0.1, 0.0};
+    const _hw_top_real _Q[] = { 1  , 0.015, 1  , 0.0};
+    const _hw_top_real _Qf[] = {0.1, 0.015, 0.1, 0.0};
     const _hw_top_real _R[] = {.001};
 
     #define _Rising_Time 0
