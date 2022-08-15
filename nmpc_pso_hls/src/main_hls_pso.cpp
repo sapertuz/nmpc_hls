@@ -167,7 +167,7 @@ int main(int argc, char ** argv){
         // Read Configuration File
         SimulationTime = read_real(&sim_config, (std::string)"SimulationTime");
 #ifdef PRINT_TO_TERMINAL
-	std::cout << "Simulation Time = " << SimulationTime << std::endl;
+	    std::cout << "Simulation Time = " << SimulationTime << std::endl;
 #endif
         qtd_pontos = (int)((float) SimulationTime / _Ts);
 

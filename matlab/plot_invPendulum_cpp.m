@@ -4,8 +4,17 @@ clear
 clc
 
 path_sim_data = '../nmpc_pso_hls/matlab/';
+xmeasure      = [0.0, 0.0, 3.1415926536, 0.0];
 
-%% Load previously generated data
+%% fmin matlab plot
+load invPend_.mat
+
+x_matlab = xHistory(:,1);
+theta_matlab = xHistory(:,3);
+u_matlab = uHistory;
+
+
+%% PSO Plot
 run([ path_sim_data, 'inverted_pendulum_pso.m'])
 
 Ts = Model.Ts;
@@ -28,19 +37,24 @@ theta_ref = xRef_out(:,3);
 
 u_ref = uRef_out(:,1);
 
-%% First plot
-col = '#C0C0C0';	 %[1 1 1]*.15;
+col = '#696969';	 %[1 1 1]*.15;
 
 figure
 subplot(3,1,1),
-    plot(time, theta,'Color',col,'LineWidth',1)
+    plot(time, theta_matlab,'Color',col,'LineWidth',1)
+    hold on
+    plot(time, theta,'--g')
 subplot(3,1,2),
-    plot(time, x,'Color',col,'LineWidth',1)
+    plot(time, x_matlab,'Color',col,'LineWidth',1)
+    hold on
+    plot(time, x,'--g')
 subplot(3,1,3),
-    plot(time, uHistory,'Color',col,'LineWidth',1)
+    plot(time, u_matlab,'Color',col,'LineWidth',1)
+    hold on
+    plot(time, uHistory,'--g')
 
-%%
-run([ path_sim_data, 'inverted_pendulum_kpso.m'])
+%% MPSO plot
+run([ path_sim_data, 'test.m'])
 
 xHistory = NMPC_SIM.state_history;
 uHistory = NMPC_SIM.control_history;
@@ -54,7 +68,7 @@ subplot(3,1,1),
     plot(time, theta,'-k','LineWidth',1)
     plot(time, theta_ref, '--b')
     plot(time, theta_ref + 2*pi, '--b')
-    axis([0, 75, -.5, 2*pi+.5])
+    axis([0, 50, -.5, 2*pi+.5])
     ylabel('State $\theta$ [rad]','Interpreter','latex','FontSize',12)
 subplot(3,1,2),
     hold on
@@ -74,7 +88,7 @@ subplot(3,1,3),
     ylabel('Input [N]','Interpreter','latex','FontSize',12)
 
 xlabel('time [s]','Interpreter','latex','FontSize',12)
-lgd = legend({'PSO', 'mPSO', 'Reference', 'Limits'},'Interpreter','latex', ...
+lgd = legend({'Active-set QP', 'PSO', 'mPSO', 'Reference', 'Limits'},'Interpreter','latex', ...
         'FontSize',12);
 lgd.NumColumns = 4;
 % lgd.Location = 'southoutside';

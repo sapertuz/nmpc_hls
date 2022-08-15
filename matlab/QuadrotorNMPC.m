@@ -2,7 +2,7 @@ function [time, xHistory, uHistory, xRef_out] = QuadrotorNMPC()
 nx = 12; % 12 states [x,y,z,phi,theta,psi,... diff ant]
 ny = 12; % 12 outputs [x,y,z,phi,theta,psi,... diff ant]
 nu = 4;  % 4 inputs [w_1, w_2, w_3, w_4].^2 (velocities are squared)
-tot_time      = 10;
+tot_time      = 20;
 
 %% NMPC configuration data
 Ts            = 0.05;        % Sampling interval

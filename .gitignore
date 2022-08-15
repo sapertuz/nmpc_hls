@@ -1,3 +1,7 @@
+file.txt
+*.mp4
+*.avi
+*.m~
 *.log
 .vscode/
 .DS_Store

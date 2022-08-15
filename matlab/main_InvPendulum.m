@@ -1,8 +1,8 @@
 %NonLinear model predivtive control for Inverted Pendulum
 % 
 
-clear 
-clc
+% clear 
+% clc
 
 calc_state = 1;
 
@@ -40,3 +40,15 @@ xmeasure      = [0.0, 0.0, 3.1415926536, 0.0];
 % uHistory = NMPC_SIM.control_history;
 % xHistory = NMPC_SIM.state_history;
 % xRef_out = NMPC_SIM.xref;
+
+%% Recalculate state
+clear xHistory_new
+xHistory_new(1,:) = xmeasure;
+for i=1:length(time)
+    if i==1
+        x_ant = xmeasure;
+    else
+        x_ant = xHistory_new(i-1,:);
+    end
+    xHistory_new(i,:) = InvPendulumSystem(0, x_ant, uHistory(i,:), Ts);
+end

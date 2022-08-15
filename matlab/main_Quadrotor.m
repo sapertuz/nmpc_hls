@@ -69,7 +69,7 @@ xmeasure      = [7,10,0,0,0,0,0,0,0,0,0,0];
 
 %% Vizualization
 % close all
-vidfile = VideoWriter('testmovie.mp4','MPEG-4');
+vidfile = VideoWriter('testmovie.mp4','Motion JPEG AVI');
 vidfile.FrameRate = 10;
 open(vidfile);
 figure(1), clf

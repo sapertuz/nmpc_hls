@@ -324,12 +324,12 @@ function [t, x, u] = nmpc(runningcosts, terminalcosts, ...
             atol_ode_sim, rtol_ode_sim, tol_opt, options, type);
         t_Elapsed = toc( t_Start );
         %   Print solution
-%         if ( iprint >= 1 )
+        if ( iprint >= 1 )
             printSolution(system, printHeader, printClosedloopData, ...
                           plotTrajectories, mpciter, T, t0, x0, u_new, ...
                           atol_ode_sim, rtol_ode_sim, type, iprint, ...
                           exitflag, output, t_Elapsed);
-%         end
+        end
         %   Store closed loop data
         t = [ t; tmeasure ];
         x = [ x; xmeasure ];

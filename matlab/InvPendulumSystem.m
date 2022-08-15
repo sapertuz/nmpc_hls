@@ -34,7 +34,7 @@ function state_dot = InvPendStateFcn(state,control)
     h_ml = invPend.h/(invPend.m*invPend.l);
     l43 = invPend.l * 4.0/3.0;
 
-    th = state(2);
+    th = state(3);
     c = cos(th);
     s = sin(th);
 
@@ -47,7 +47,7 @@ function state_dot = InvPendStateFcn(state,control)
 
     state_dot(1) = state(2);                                                 
     state_dot(3) = state(4);                                                 
-    state_dot(4) = (u_bx1 + mls*state4_2 - Mm_c*(invPend.g*s - (h_ml)*state(4))) / (mlc-Mm_c*l43); 
-    state_dot(2) = (Mn_1)*(u_bx1 - mlc*state_dot(4) + mls*state4_2); 
+    state_dot(4) = (u_bx1 + mls*state4_2 - Mm_c*(invPend.g*s - (h_ml)*state(4))) / (mlc-Mm_c*l43);
+    state_dot(2) = (Mn_1)*(u_bx1 - mlc*state_dot(4) + mls*state4_2);
 
     state_dot = state_dot(:);
