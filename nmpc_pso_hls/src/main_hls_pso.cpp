@@ -501,7 +501,7 @@ void save(char * local_matlab_name){
 	export_vector_to_file(sim_matlab, cost_history, qtd_pontos, "NMPC_SIM.cost_history", 0);
     
     export_matrix_to_file(sim_matlab, xref_history, qtd_pontos, _Nx, "NMPC_SIM.xref");
-	export_matrix_to_file(sim_matlab, uref_history, qtd_pontos, _Nx, "NMPC_SIM.uref");
+	export_matrix_to_file(sim_matlab, uref_history, qtd_pontos, _n_U, "NMPC_SIM.uref");
 
     export_vector_to_file(sim_matlab, _state_upper_limits, _Nx, "Model.x_max", 0);
 	export_vector_to_file(sim_matlab, _state_lower_limits, _Nx, "Model.x_min", 0);

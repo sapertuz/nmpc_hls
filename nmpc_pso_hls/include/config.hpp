@@ -33,7 +33,7 @@ typedef float _hw_model_real;
 // #ifdef PSO_CONFIG
 #define _KPSO 1
 #define _stable_zero 1
-#define _n_S 5
+#define _n_S 10
 #define _maxiter 100
 #define _max_v 30
 #define _w0 0.9
