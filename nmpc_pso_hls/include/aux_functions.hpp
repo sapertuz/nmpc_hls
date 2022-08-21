@@ -9,7 +9,7 @@ float ** alloc_matrix(int n, int m);
 void free_matrix(float ** ptr, int n);
 
 template<typename float_type> void print_formatted_float_array(const float_type * array, const unsigned short size, const unsigned short precision, const unsigned short width){
-    for (unsigned short i = 0; i < size; i++){
+    for (int i = 0; i < size; i++){
         std::cout << std::fixed << std::setprecision(precision) << std::right << std::setw(width) << array[i];
         if (i<size-1){
             std::cout << "\t";
@@ -21,7 +21,7 @@ template<typename array_type_dest, typename array_type_src, unsigned n> void mem
     (array_type_dest dest[n], const array_type_src src[n]){
 #pragma HLS inline
     // Copy contents of src[] to dest[]
-    for (unsigned short i=0; i<n; i++){
+    for (int i=0; i<n; i++){
 #pragma HLS unroll
         dest[i] = src[i];
     }
@@ -31,7 +31,7 @@ template<typename array_type_dest, typename array_type_src, unsigned n> void mem
     (array_type_dest dest[n], array_type_src src[n]){
 #pragma HLS inline
     // Copy contents of src[] to dest[]
-    memcpy_loop: for (unsigned short i=0; i<n; i++){
+    memcpy_loop: for (int i=0; i<n; i++){
 #pragma HLS pipeline off
         dest[i] = src[i];
     }
@@ -40,7 +40,7 @@ template<typename array_type_dest, typename array_type_src, unsigned n> void mem
 template<typename array_type_dest, typename array_type_src, unsigned n> void memcpy_loop_enclosed
     (array_type_dest dest[n], const array_type_src src[n]){
     // Copy contents of src[] to dest[]
-    for (unsigned short i=0; i<n; i++){
+    for (int i=0; i<n; i++){
 #pragma HLS unroll
         dest[i] = src[i];
     }
@@ -50,7 +50,7 @@ template<typename data_type> void memset_loop
     (data_type *array, const data_type data, unsigned n){
     // Copy contents of src[] to dest[]
 #pragma HLS inline
-    for (unsigned short i=0; i<n; i++){
+    for (int i=0; i<n; i++){
 #pragma HLS unroll
         array[i] = data;
     }
