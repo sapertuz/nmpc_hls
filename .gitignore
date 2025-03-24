@@ -1,7 +1,10 @@
-file.txt
-*.mp4
-*.avi
-*.m~
-*.log
-.vscode/
+*.out
+test
+.vscode
+test.dSYM
+*.Xil
+*.jou
+*.str
+
+*.DS_Store
 .DS_Store
