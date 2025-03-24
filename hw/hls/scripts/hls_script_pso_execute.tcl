@@ -6,7 +6,7 @@
 set prj_name nmpc_solver_execute_fsm
 set prj_top nonlinear_solver_wrapper
 
-set ip_path "/home/chello/Documents/Vivado_WS/vitis_ip_repo"
+set ip_path "${workspace}/vitis_ip_repo"
 set workspace [pwd]
 set workspace [file dirname $workspace]
 
@@ -15,7 +15,6 @@ set incl_path ${workspace}/include
 # set module_file "hls_nonlinear_solver" 
 set main_name "main_hls_pso" 
 
-set arg_str "${workspace}/config/sniffbot/project_config.txt ${workspace}/config/sniffbot/simulation_config_ring.txt"
 set c_flags "-D__VITIS__ -DSNIFFBOT_CONFIG -DPSO_CONFIG -DUSE_FAST_SIN_COS -I${incl_path} -I${incl_path}/models -std=c++11 -Wno-unknown-pragmas"
 set csim_tb_flags "-D__VITIS__ -DSNIFFBOT_CONFIG -DPSO_CONFIG -I${incl_path} -I${incl_path}/models -std=c++11  -DDEBUG_FILE -DPRINT_TO_TERMINAL -Wno-unknown-pragmas"
 
@@ -42,6 +41,7 @@ config_export -display_name sniffbot_nmpc -format ip_catalog -output $ip_path/sn
 
 # config_core DSP48 -latency 4
 
+# set arg_str "${workspace}/config/sniffbot/project_config.txt ${workspace}/config/sniffbot/simulation_config_ring.txt"
 # csim_design -argv $arg_str -clean -O -profile
 csynth_design
 # cosim_design -O -rtl vhdl

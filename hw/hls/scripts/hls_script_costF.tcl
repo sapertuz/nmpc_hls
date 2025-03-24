@@ -3,7 +3,7 @@
 ## Please DO NOT edit it.
 ## Copyright 1986-2021 Xilinx, Inc. All Rights Reserved.
 ############################################################
-set ip_path "/home/chello/Documents/Vivado_WS/vitis_ip_repo"
+set ip_path "${workspace}/vitis_ip_repo"
 
 set prj_name test_costF
 set prj_top cost_function_wrapper
@@ -13,7 +13,7 @@ set workspace [file dirname $workspace]
 
 set src_path ${workspace}/src
 set incl_path ${workspace}/include
-set main_name "main_hls_system" 
+set main_name "main_hls_system"
 
 set c_flags "-DSNIFFBOT_CONFIG -DUSE_FAST_SIN_COS -I${incl_path} -I${incl_path}/models -std=c++11 -Wno-unknown-pragmas"
 set csim_tb_flags "-DSNIFFBOT_CONFIG -I${incl_path} -I${incl_path}/models -std=c++11 -DDEBUG_SYSTEM -Wno-unknown-pragmas"

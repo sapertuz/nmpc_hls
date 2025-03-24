@@ -3,7 +3,7 @@
 ## Please DO NOT edit it.
 ## Copyright (C) 1986-2019 Xilinx, Inc. All Rights Reserved.
 ############################################################
-set ip_path "/home/chello/Documents/Vivado_WS/vitis_ip_repo"
+set ip_path "${workspace}/vitis_ip_repo"
 
 set prj_name nmpc_hls_model
 set prj_top model_wrapper
