@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it using the following metadata."
+title: "Vivado HLS-based NMPC Controller with PSO Optimization"
+authors:
+  - family-names: Pertuz
+    given-names: Sergio
+    affiliation: TU Dresden
+    orcid: "https://orcid.org/0000-0002-6311-3251"
+version: 1.0.0
+license: GPL-3.0
+doi: 10.1109/ASAP57973.2023.00038
+repository-code: https://github.com/sapertuz/NMPC-controller
+url: https://github.com/sapertuz/NMPC-controller
+date-released: 2025-03-23

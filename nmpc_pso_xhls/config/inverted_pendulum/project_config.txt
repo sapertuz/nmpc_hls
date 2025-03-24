@@ -1,2 +1,0 @@
-sim_type simulation
-simulation_config_file config/inverted_pendulum/simulation_config.txt
