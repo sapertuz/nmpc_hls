@@ -26,8 +26,8 @@ source <path-to-xilinx>/Vivado/<version>/settings64.sh
 
     ```bash
     vivado -mode batch -notrace -source create_project.tcl -tclargs -n orb_extract \
-    -d scripts/designs/design_1.tcl -ip ../hls/vitis_ip_repo -pt xc7z020clg400-1 \
-    -bd www.digilentinc.com:pynq-z1:part0:1.0 -force -synth
+    -d scripts/designs/design_1.tcl -ip ../hls/vitis_ip_repo -pt xczu3eg-sbva484-1-i \
+    -bd avnet-tria:ultra96v2:part0:1.3 -force -synth
     ```
 ## Some Device Names
 
